@@ -1,0 +1,173 @@
+Message formats between FE/BE
+=============================
+
+This document lists message formats: currently there's no schema enforcement, so
+one should manually update this document whenever code changes.
+
+Hopefully that's not too much effort.  (Using something like protocol buffer
+would solve that problem, but it comes with its own dependency hassle ...)
+
+cell_init (FE):
+
+cell_fini (FE):
+
+zoom_req (FE):
+    # This message will trigger Plotter::init_canvas(), which will generate a
+    # new canvas config according to the request, send back `new_canvas_config`
+    # message, and start computing tiles (which will results in a bunch of
+    # `tile` messages.)
+
+    {
+        # current canvas config ID and zoom level used to generate this request.
+        config_id: 123,
+        zoom_level: 0,
+
+        # the select area in pixel coordinate.
+        x0: 1.234,
+        y0: 2.345,
+        x1: 9.876,
+        y1: 8.765,
+    }
+
+new_canvas_config (BE):
+    {
+        config_id: 123,  # New canvas config ID.
+        w: 600,  # Width of the canvas.
+        h: 800,  # Height of the canvas.
+
+        # The shown area in data coordinate.
+        x0: 1.234,
+        y0: 2.345,
+        x1: 123.456,
+        y1: 234.567,
+
+        # Added by axis_util.py: see Plotter._send_msg().
+        axes: [
+            x: [
+                # Ticks for the x axis.
+                [10, '0.0'],
+                [25, '0.1'],
+                [40, '0.2'],
+                ...
+            ],
+            y: [
+                # similar
+            ],
+        ],
+    }
+
+axis_req (FE):
+    {
+        config_id: 123,  # Config ID
+
+        # Sequence number for this message so that FE can know which reply
+        # corresponds to the latest request.
+        axis_seq: 234,
+
+        # Offset in pixel coordinates for panning.  E.g., if (x_offset,
+        # y_offset) = (10, 3), then the canvas is shifted 10 pixels to the right
+        # and 3 pixels down.  See also TileSet.constructor().
+        x_offset: 10,
+        y_offset: 3,
+    }
+
+axis_ticks (BE):
+    {
+        config_id: 123,   # Existing config ID.
+        axis_seq: 234,  # Seq #.
+
+        # See above: ticks supplied in this message *also* have to be shifted in
+        # the same way.
+        x_offset: 10,
+        y_offset: 3,
+
+        axes: [
+            # Same as in new_canvas_config.
+        ]
+    }
+
+tile_req (FE):
+    {
+        # Sequence numbers for which we have received responses.
+        ack_seqs: [123, 456, ...],
+
+        config_id: 123,  # Current canvas config ID.
+        zoom_level: 0,  # Current zoom level.
+        items: [
+            {
+                # For highlight tiles, only `id` is present.
+                id: 123,  # Item ID for highlight tiles.
+
+                # For non-highlight tiles, only `version` is present.
+                # (Also, currently `reg` is empty for them.)
+                #
+                # For non-highlight tiles, we allow BE to *bump up* versions:
+                # i.e., if version 234 is requested, by version 240 becomes
+                # available while the message was enqueued, then we simply
+                # generate tiles for version 240 and return it, because there's
+                # not much point in generating *old* tiles.
+                #
+                # Also, if version is updated *while* we're generating tiles,
+                # then the tile may contain inconsistent information, which is
+                # indicated by having an odd version number in the response.
+                version: 234,   # SelectionMap version for non-highlight tiles.
+
+                # Prioritized tile coordinates (row:col:seq_no) that the cursor
+                # may go through.  We expect BE to handle prioritized tiles
+                # first.
+                prio: ["3:4:100", "3:5:101", ...],
+
+                # The remaining missing tiles.
+                reg: ["2:3:105", "2:4:106", ...]
+            },
+            {
+                id: 456,
+                ...
+            }
+        ]
+
+        # True if we could not send all tile requests, because there were
+        # already too many in-flight requests.  (Currently only used by FE.)
+        throttled: (true|false),
+    }
+
+search (FE):
+    {
+        pat: pattern,
+        regex: (true|false),
+
+        # Optional: If given, behave as if update_selection (with how = 'exact')
+        # was fired at the same time.  Used when autoselect is on.
+        version: 200,
+    }
+
+labels (BE):
+    {
+        # Sends up to 200 items matching the requested search pattern.
+        labels: [
+            # item ID, selected (boolean), item label,
+            # style = "rrggbb:(marker size):(line width)"
+            [100, true, "red line #1", "ff0000:3:5"],
+            ...
+        ]
+        count: 250,  # Number of total items matching the search pattern.
+    }
+
+update_selection (FE):
+    {
+        # Monotonically increasing version # for SelectionMap.
+        # Must be always even: odd version numbers are used by BE to indicate
+        # "SelectionMap update in progress"!
+        version: 200,
+
+        # 'select': select all in 'ids', or all matching 'pat'.
+        # 'deselect': deselect all in 'ids', or all matching 'pat'.
+        # 'exact': select exactly those in 'ids' or 'pat', and deselect
+        #          everything else.
+        how: ('select'|'deselect'|'exact'),
+
+        # Either 'pat' and 'regex' are present, or 'ids'.
+        pat: 'red line',
+        regex: (true|false),
+        ids: [1, 2, 3, 4, 5],
+    }

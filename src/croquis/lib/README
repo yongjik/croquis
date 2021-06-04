@@ -1,0 +1,2 @@
+This directory will contain the C++ shared library file, so that we can import
+it from python during development.

@@ -1,0 +1,317 @@
+/* CSS definition for the frontend. */
+
+.croquis_nbext .cr_main {
+    /* margin-left: 25px; */
+    /* margin-right: 25px; */
+    margin-bottom: 30px;
+}
+
+.croquis_nbext .cr_main .cr_ctrl_panel {
+    margin-bottom: 10px;
+
+    font-size: 15px;
+    text-align: right;
+    color: #950;
+}
+
+.croquis_nbext .cr_main .cr_ctrl_panel button {
+    margin-right: 30px;
+}
+
+.croquis_nbext .cr_main .cr_ctrl_panel input {
+    margin: 0px 0px 0px 0px;
+    vertical-align: middle;
+}
+
+.croquis_nbext table,
+.croquis_nbext table tr,
+.croquis_nbext table tr td {
+    border-collapse: collapse;
+    border: none;
+    margin: 0px;
+    padding: 0px;
+}
+
+.croquis_nbext table {
+    width: 100%;
+    table-layout: fixed;
+}
+
+/* Disable highlighting specified in Jupyter's own CSS. */
+.croquis_nbext table tr:nth-child(odd) { background: unset; }
+.croquis_nbext table tr:hover { background: unset; }
+
+.croquis_nbext .cr_x_axis, .croquis_nbext .cr_y_axis {
+    font-size: 12px;
+    overflow: visible;
+    position: relative;
+}
+
+.croquis_nbext .cr_x_axis {
+    height: 30px;
+    border-top: 2px solid black;
+}
+
+.croquis_nbext .cr_y_axis {
+    width: 60px;
+    border-right: 2px solid black;
+}
+
+.croquis_nbext .cr_x_axis .cr_tick {
+    background-color: black;
+    width: 1px;
+    height: 3px;
+
+    position: absolute;
+    top: 0px;
+}
+
+.croquis_nbext .cr_x_axis .cr_label {
+    position: absolute;
+    top: 5px;
+    transform: translateX(-50%);
+}
+
+.croquis_nbext .cr_y_axis .cr_tick {
+    background-color: black;
+    width: 3px;
+    height: 1px;
+
+    position: absolute;
+    right: 0px;
+}
+
+.croquis_nbext .cr_y_axis .cr_label {
+    position: absolute;
+    right: 5px;
+    transform: translateY(-50%);
+}
+
+.croquis_nbext .cr_canvas {
+    width: 80%;
+    overflow: hidden;
+
+    /* Needed here so that the .inner div works relative to this. */
+    position: relative;
+}
+
+/* Includes .cr_progressbar, .cr_inner, .cr_foreground, .cr_grid, and
+ * .cr_select_area.
+ */
+.croquis_nbext .cr_canvas > div {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+}
+
+.croquis_nbext .cr_inner {
+    overflow: visible;
+
+    width: 100%;
+    height: 100%;
+
+    user-select: none;
+}
+
+.croquis_nbext img.cr_tile {
+    position: absolute;
+
+    max-width: 256px;
+    max-height: 256px;
+
+    margin: 0px;
+    border-style: none;
+    /* border: thin solid red; */
+
+    user-select: none;
+}
+
+/* Contains highlight tiles. */
+.croquis_nbext .cr_foreground {
+    visibility: hidden;  /* Hidden by default. */
+    background-color: rgba(255, 255, 255, 0.8);
+
+    /* Must cover the whole area. */
+    width: 100%;
+    height: 100%;
+
+    user-select: none;
+}
+
+/* Contains grid lines. */
+.croquis_nbext .cr_grid {
+    width: 100%;
+    height: 100%;
+    user-select: none;
+}
+
+.croquis_nbext .cr_grid .x_grid {
+    position: absolute;
+    width: 1px;
+    height: 100%;
+    border-left: 1px dashed rgba(0, 45, 209, 0.5);
+}
+
+.croquis_nbext .cr_grid .y_grid {
+    position: absolute;
+    width: 100%;
+    height: 1px;
+    border-top: 1px dashed rgba(0, 45, 209, 0.5);
+}
+
+/* Used for select-to-zoom. */
+.croquis_nbext .cr_select_area {
+    visibility: hidden;  /* Hidden by default. */
+    background-color: rgba(66, 57, 42, 0.7);
+    border-style: dotted;
+    border-width: 1px;
+    border-color: rgba(0, 0, 0, 0.8);
+
+    user-select: none;
+}
+
+.croquis_nbext .cr_progressbar {
+    height: 40px;
+
+    /* Initially hidden: only shows up if the backend takes too long. */
+    visibility: hidden;
+}
+
+.croquis_nbext .cr_legend {
+    width: 20%;
+    position: relative;
+}
+
+.croquis_nbext .cr_legend .cr_legend_div {
+    position: absolute;
+    top: 20px;
+    bottom: 20px;
+    left: 20px;
+    right: 0px;
+
+    display: flex;
+    flex-direction: column;
+}
+
+/* https://stackoverflow.com/a/63890844 */
+.croquis_nbext .cr_legend .cr_legend_div li + li {
+    margin-top: 3px;
+}
+
+.croquis_nbext .cr_legend .cr_legend_div .cr_searchbox input {
+    width: 100%;
+    font-family: monospace;
+}
+
+.croquis_nbext .cr_legend .cr_legend_div .cr_search_ctrl {
+    text-align: left;
+    font-size: 90%;
+    line-height: 125%;  /* TODO: Doesn't seem working? */
+
+    margin-top: 15px;
+
+    position: relative;
+}
+
+.croquis_nbext .cr_legend .cr_legend_div .cr_search_ctrl ul.cr_btn_popup {
+    visibility: hidden;
+
+    background-color: #ffe;
+    border: 1px solid #063;
+    padding: 10px;
+
+    list-style-type: none;
+
+    position: absolute;
+    top: 15px;
+    left: 15px;
+}
+
+.croquis_nbext .cr_legend .cr_legend_div .cr_search_ctrl input {
+    margin: 0px;
+    vertical-align: middle;
+}
+
+.croquis_nbext .cr_legend .cr_legend_div .cr_search_stat {
+    text-align: left;
+    font-size: 90%;
+    color: #852400;
+}
+
+.croquis_nbext .cr_legend .cr_legend_div ul.cr_search_result {
+    flex-grow: 1;
+    overflow: auto;
+
+    list-style-type: none;
+    margin-left: 0px;
+    margin-right: 0px;
+    padding: 0px;
+
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+.croquis_nbext .cr_legend .cr_legend_div ul.cr_search_result li {
+    text-align: left;
+    font-family: monospace;
+    white-space: nowrap;
+}
+
+.croquis_nbext .cr_legend .cr_legend_div ul.cr_search_result li:hover {
+    background-color: #dff;
+}
+
+.croquis_nbext .cr_legend .cr_legend_div ul.cr_search_result li input {
+    margin: 0px 0.5em 0px 0px;  /* only 0.5em on right */
+    vertical-align: middle;
+}
+
+.croquis_nbext .cr_legend .cr_legend_div ul.cr_search_result li svg {
+    vertical-align: middle;
+}
+
+.croquis_nbext .cr_legend .cr_legend_div .cr_info {
+    flex: 0 0 70px;
+
+    background-color: #dff;  /* test */
+}
+
+/*******************************
+ * Debugging related elements. *
+ *******************************/
+
+.croquis_nbext .cr_dbg_btns {
+    background-color: #cfd;
+    color: #950;
+}
+
+.croquis_nbext .cr_dbgpt1 {
+    color: red;
+    font-size: 10px;
+    position: absolute;
+    transform: translateX(-50%) translateY(-50%);
+    z-index: 10;
+}
+
+.croquis_nbext .cr_dbgpt2 {
+    color: black;
+    font-size: 10px;
+    position: absolute;
+    transform: translateX(-50%) translateY(-50%);
+    z-index: 10;
+}
+
+.croquis_nbext .cr_dbg_status {
+    background-color: #dfe;
+    position: absolute;
+    text-align: center;
+    z-index: 5;
+
+    left: 50px;
+    top: 50px;
+    width: 400px;
+}
+
+.croquis_nbext .cr_dbglog {
+    background-color: #dfe;
+}

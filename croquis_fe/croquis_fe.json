@@ -1,0 +1,5 @@
+{
+  "load_extensions": {
+    "croquis_fe/croquis_fe": true
+  }
+}
