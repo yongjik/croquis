@@ -2,6 +2,7 @@
 
 #include "croquis/plotter.h"
 
+#include <inttypes.h>  // PRId64
 #include <math.h>  // powf
 #include <stdio.h>  // printf (for debugging)
 
@@ -188,7 +189,7 @@ void Plotter::acknowledge_seqs(const std::vector<int> &seqs)
         int64_t age = T - v.second;
         if (age < TILE_ACK_EXPIRE_USEC) break;
 
-        DBG_LOG1(DEBUG_PLOT, "Forgetting tile #%d [%s] - age %ld us.",
+        DBG_LOG1(DEBUG_PLOT, "Forgetting tile #%d [%s] - age %" PRId64 " us.",
                  seq, key.debugString().c_str(), age);
 
         const auto iter2 = inflight_tiles_.find(key);
@@ -255,8 +256,9 @@ void Plotter::launch_tasks(const std::unique_lock<std::mutex> &lck,
     }
 
     int64_t batch_size =
-        std::min(std::max(5000L, (end_idx - start_idx) / tmgr_->nthreads),
-                 100000L);
+        std::min(std::max((int64_t) 5000,
+                          (end_idx - start_idx) / tmgr_->nthreads),
+                 (int64_t) 100000);
 
     ctxt->irs = std::make_unique<IntersectionResultSet<int64_t>>(
         prio_coords2, reg_coords2, start_idx, end_idx, batch_size);

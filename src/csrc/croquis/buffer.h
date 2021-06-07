@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <inttypes.h>  // PRId64
 #include <math.h>  // isnan, nearbyint
 
 #include <string>
@@ -244,7 +245,7 @@ class GenericBuffer2D {
 
         if (val < 0 || val >= limit) {
             util::throw_value_error(
-                "%s: Invalid value %ld - must be in [0, %ld).",
+                "%s: Invalid value %" PRId64 " - must be in [0, %" PRId64 ").",
                 name_.c_str(), val, limit);
         }
 

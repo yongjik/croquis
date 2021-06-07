@@ -1,5 +1,7 @@
 # Building from the source
 
+The following should work on Linux and Mac OS.  (Other OS's are not supported yet.)
+
 ## Prerequisites
 
 In order to build, you need CMake and
@@ -7,16 +9,19 @@ In order to build, you need CMake and
 You can install pybind11 by:
 
 ```
+# If you're using conda:
+conda install pybind11
+
+# Otherwise:
 pip3 install pybind11
 ```
 
 ## Building the wheel package
 
-We only explain Linux: other OS's are not ready yet.
-
 ```
 cd (croquis top level directory)
-mkdir build.make  # Any other directory will do.
+# Any directory name will do, except for "build", because setup.py uses it.
+mkdir build.make
 cd build.make
 cmake -G'Unix Makefiles' -DCMAKE_BUILD_TYPE=Release ../src
 make -j8 VERBOSE=1 wheel
@@ -39,7 +44,7 @@ After that, wheel file is available in the `dist` directory:
 
 ```
 cd (top level directory)/dist
-pip install croquis-0.1.0-cp39-cp39-linux_x86_64.whl  # Or something similar.
+pip3 install croquis-0.1.0-cp39-cp39-linux_x86_64.whl  # Or something similar.
 ```
 
 ## Testing at the source tree

@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include <experimental/optional>
 #include <list>
 #include <memory>  // unique_ptr
 #include <mutex>
@@ -15,6 +14,7 @@
 #include "croquis/canvas.h"
 #include "croquis/figure_data.h"
 #include "croquis/util/macros.h"  // DISALLOW_COPY_AND_MOVE
+#include "croquis/util/optional.h"  // optional
 
 namespace croquis {
 
@@ -50,7 +50,7 @@ class Plotter {
     //
     // Initialized when cell_init message is received: once it is initialized,
     // we don't accept any more FigureData.
-    std::experimental::optional<SelectionMap> sm_;
+    optional<SelectionMap> sm_;
     bool show_called() const { return bool(sm_); }
 
     // We use pointer to keep the object at the same place.

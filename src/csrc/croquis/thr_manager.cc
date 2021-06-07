@@ -2,6 +2,7 @@
 
 #include "croquis/thr_manager.h"
 
+#include <inttypes.h>  // PRId64
 #include <stdio.h>  // printf
 
 #include <mutex>
@@ -100,7 +101,8 @@ class ThrHelper {
     // Possibly increase the priority of a task in a heap.
     static void heap_update_task(
                     std::vector<Task *> *heap, Task *t, int64_t new_time) {
-        DBG_LOG1(DEBUG_TMGR, "Updating task [%p] from %ld to %ld ...",
+        DBG_LOG1(DEBUG_TMGR,
+                 "Updating task [%p] from %" PRId64 " to %" PRId64 " ...",
                  t, t->enqueue_time_, new_time);
 
         // Since `new_time` is actually the current time, it should always be
@@ -226,7 +228,7 @@ void WorkThr::run()
         }
 
         DBG_LOG1(DEBUG_TMGR,
-                 "Thr #%d running task [%p] (wait time = %ld us) ...",
+                 "Thr #%d running task [%p] (wait time = %" PRId64 " us) ...",
                  idx_, t, util::microtime() - t->enqueue_time_);
         t->run();
 

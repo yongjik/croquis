@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 #include <memory>  // unique_ptr
+#include <string>
 
 namespace croquis {
 

@@ -2,6 +2,7 @@
 
 #include "croquis/buffer.h"
 
+#include <inttypes.h>  // PRId64
 #include <stdint.h>  // INT32_MAX
 
 #include <pybind11/pybind11.h>
@@ -224,7 +225,7 @@ GenericBuffer2D::GenericBuffer2D(const std::string &name,
         int64_t stride = info.strides[i];  // in bytes
         if (stride < INT32_MIN || stride > INT32_MAX) {  // Sanity check.
             util::throw_value_error(
-                "%s: Buffer stride too big (%zd bytes)",
+                "%s: Buffer stride too big (%" PRId64 " bytes)",
                 name.c_str(), stride);
         }
         strides[i + 2 - info.ndim] = stride;

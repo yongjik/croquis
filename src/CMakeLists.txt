@@ -1,14 +1,10 @@
 # The main CMakeLists.txt
 # Main idea copied from: https://github.com/dev-cafe/cmake-cookbook/blob/master/chapter-09/recipe-06/README.md
 
-# Hmm wait, actually we don't need it any more ... for now.
-# # We need at least 3.3 to apply CMP0063 (needed to compile pybind_shim as an
-# # "object library" with -fvisibility=hidden).
-cmake_minimum_required(VERSION 3.3)
-cmake_policy(SET CMP0063 NEW)
+# Needed for add_compile_definitions().
+cmake_minimum_required(VERSION 3.12)
 
 project(croquis VERSION 0.0.1 LANGUAGES CXX)
-set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # I don't know what would be the best instruction set to target, but given that
@@ -23,18 +19,43 @@ if(ENABLE_AVX2)
     endif()
 endif()
 
+if(APPLE)
+    # On Mac OS, std::experimental::optional is not available with C++14 - the
+    # easiest solution seems to be just use C++17.
+    set(CMAKE_CXX_STANDARD 17)
+    add_compile_definitions(USE_STD_OPTIONAL)
+
+    # (Hopefully) support older versions of Mac OS.
+    # cf. https://github.com/MacPython/wiki/wiki/Spinning-wheels
+    set(CMAKE_OSX_DEPLOYMENT_TARGET 10.9)
+
+    # Seems like we need this flag on Mac OS.
+    # See also: https://pybind11.readthedocs.io/en/stable/compiling.html#building-manually
+    #           https://github.com/pybind/pybind11/blob/v2.6.2/tools/pybind11Common.cmake
+    set(CMAKE_SHARED_LINKER_FLAGS "-undefined dynamic_lookup")
+else()
+    set(CMAKE_CXX_STANDARD 14)
+    add_compile_definitions(USE_EXPERIMENTAL_OPTIONAL)
+
+    # Add -Bsymbolic-functions option.
+    # cf. https://blog.flameeyes.eu/2012/10/symbolism-and-elf-files-or-what-does-bsymbolic-do/
+    #
+    # If f() in our library calls another function g() in our library,
+    # -Bsymbolic-functions ensures that we always call the version of g() that
+    # exists inside our library, not some other g() that happens to have the
+    # same name in some other shared library.
+    #
+    # TODO: How do I do the same thing on Linux?
+    set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic-functions")
+
+    # Apparently, this is required to use PRId64 in *ancient* compilers (gcc
+    # 8.3.1) used by manylinux2010 Docker image.
+    add_compile_definitions(__STDC_FORMAT_MACROS)
+endif()
+
 find_package(Python3 COMPONENTS Interpreter Development)
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
-
-# Add -Bsymbolic-functions option.
-# cf. https://blog.flameeyes.eu/2012/10/symbolism-and-elf-files-or-what-does-bsymbolic-do/
-#
-# If f() in our library calls another function g() in our library,
-# -Bsymbolic-functions ensures that we always call the version of g() that
-# exists inside our library, not some other g() that happens to have the same
-# name in some other shared library.
-set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic-functions")
 
 # We can use this, but it brings in more dependency, and it's harder to control
 # options for individual source files.

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <inttypes.h>  // PRId64
 #include <math.h>  // fmin, NAN
 #include <stdint.h>  // int64_t, INT32_MAX
 
@@ -232,7 +233,7 @@ class FreeformLineData : public FigureData {
         int64_t cnt = next - get_start_idx(rel_item_id);
         if (cnt < 0 || cnt > INT32_MAX) {
             util::throw_value_error(
-                "Number of points for line #%d out of range (%ld).",
+                "Number of points for line #%d out of range (%" PRId64 ").",
                 rel_item_id, cnt);
         }
 

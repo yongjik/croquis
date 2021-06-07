@@ -26,9 +26,8 @@ if [[ "$INSIDE_DOCKER" != "Y" ]]; then
         exit 1
     fi
 
-    rm -rf .docker_build || true
-    mkdir .docker_build
-    cp "$0" .docker_build
+    rm -rf .pkg_build || true
+    mkdir .pkg_build
 
     # Create .zip file out of the whole source code.
     #
@@ -38,12 +37,13 @@ if [[ "$INSIDE_DOCKER" != "Y" ]]; then
     (
         cd "$root_dir"
         git archive --format=zip "$git_tag"
-    ) > .docker_build/croquis_src.zip
+    ) > .pkg_build/croquis_src.zip
+    cp "$0" .pkg_build
 
     docker rm "$docker_container_name" || true
     docker pull quay.io/pypa/manylinux2010_x86_64
     docker run --name "$docker_container_name" \
-        --mount type=bind,src="$PWD/.docker_build",dst=/mnt/bind \
+        --mount type=bind,src="$PWD/.pkg_build",dst=/mnt/bind \
         quay.io/pypa/manylinux2010_x86_64:latest \
         bash -c "mkdir /build ; cd /build ; unzip /mnt/bind/croquis_src.zip ;
                  INSIDE_DOCKER=Y /mnt/bind/build_linux.sh \
@@ -51,7 +51,7 @@ if [[ "$INSIDE_DOCKER" != "Y" ]]; then
 
 else
     # We're inside docker now.
-    py_version="$1"  # E.g., "3.6"
+    py_version="$1"  # E.g., "3.8"
     py_short_version=$(echo "$py_version" | sed -e 's/\.//')  # E.g., 38
     pkg_version="$2"
 
@@ -82,9 +82,9 @@ fi
 
 # We're back outside.
 docker container rm "$docker_container_name"
-pkg_file=$(find .docker_build -name "croquis-$pkg_version-*.whl")
+pkg_file=$(find .pkg_build -name "croquis-$pkg_version-*.whl")
 cp "$pkg_file" .
-rm -rf .docker_build
+rm -rf .pkg_build
 
 set +o xtrace
 echo "Created package file: "$(basename "$pkg_file")
