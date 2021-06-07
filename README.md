@@ -36,7 +36,11 @@ For building from the source, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
 TODO: Add a few lines for starting.
 
-XXX Buy me a coffee?
+This library is of course open source (MIT License) and totally free to use, but
+just in case you really liked it for some reason, the author could use a cup of
+coffee or two... :)
+
+[![buy me a coffee](.github/donation-button.png)](https://www.buymeacoffee.com/yongjikkim)
 
 ## Limitations
 
@@ -53,7 +57,7 @@ bare minimum** functionality.  In particular:
 - As you can see, the UI is rather primitive.
 
 If croquis seems useful to you, but some features are missing for your use case,
-then please consider filing an issue.  (Of course I can't guarantee anything,
+then please feel free to file an issue.  (Of course I can't guarantee anything,
 but it will be nice to know that someone's interested.)
 
 ## FAQ
