@@ -2089,7 +2089,7 @@ class TileHandler {
         if (len == 0) s = 'No matching items.';
         else if (len == 1) s = '1 Matching item.';
         else if (len == msg_dict.count) s = `${len} matching items.`;
-        else s = `showing ${len} of ${msg_dict.count} matching items.`;
+        else s = `Showing ${len} of ${msg_dict.count} matching items.`;
 
         this.search_stat_area.textContent = s;
     }
