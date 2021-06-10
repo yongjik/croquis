@@ -32,6 +32,12 @@ function get_timestamp_str() {
            fmt(T.getSeconds(), 2) + '.' + fmt(T.getMilliseconds(), 3);
 }
 
+// Helper function to hide/unhide stuff by changing "display" attribute.
+// (We assume that CSS did not set "display: none": in that case unhide() will
+// not work.)
+function hide(elem) { elem.style.display = 'none'; }
+function unhide(elem) { elem.style.display = null; }
+
 // Add a module-level resize handler.
 $(window).resize(resize_handler);
 
@@ -1107,14 +1113,14 @@ class TileHandler {
             if (this.searchbox.value != '') {
                 this.btn_select_matching.textContent =
                     'Select all matching ' + this.searchbox.value;
-                this.btn_select_matching.style = 'visible';
+                unhide(this.btn_select_matching.parentNode);
                 this.btn_deselect_matching.textContent =
                     'Deselect all matching ' + this.searchbox.value;
-                this.btn_deselect_matching.style = 'visible';
+                unhide(this.btn_deselect_matching.parentNode);
             }
             else {
-                this.btn_select_matching.style = 'hidden';
-                this.btn_deselect_matching.style = 'hidden';
+                hide(this.btn_select_matching.parentNode);
+                hide(this.btn_deselect_matching.parentNode);
             }
 
             this.btn_popup.show();
