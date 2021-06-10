@@ -23,23 +23,12 @@
     vertical-align: middle;
 }
 
-.croquis_nbext table,
-.croquis_nbext table tr,
-.croquis_nbext table tr td {
-    border-collapse: collapse;
-    border: none;
-    margin: 0px;
-    padding: 0px;
-}
+.croquis_nbext .cr_main1 {
+    margin: 0px 25px 30px 25px;
 
-.croquis_nbext table {
-    width: 100%;
-    table-layout: fixed;
+    display: flex;
+    flex-direction: row;
 }
-
-/* Disable highlighting specified in Jupyter's own CSS. */
-.croquis_nbext table tr:nth-child(odd) { background: unset; }
-.croquis_nbext table tr:hover { background: unset; }
 
 .croquis_nbext .cr_x_axis, .croquis_nbext .cr_y_axis {
     font-size: 12px;
@@ -47,14 +36,22 @@
     position: relative;
 }
 
+.croquis_nbext .cr_y_axis {
+    flex: 0 0 60px;
+    align-self: flex-start;  /* Flush to the top. */
+    width: 60px;
+    border-right: 2px solid black;
+
+    /* Height should be (canvas height) + 2px (= width of x axis). */
+}
+
+.croquis_nbext .cr_canvas_plus_x_axis {
+    flex: 0.9 1 320px;
+}
+
 .croquis_nbext .cr_x_axis {
     height: 30px;
     border-top: 2px solid black;
-}
-
-.croquis_nbext .cr_y_axis {
-    width: 60px;
-    border-right: 2px solid black;
 }
 
 .croquis_nbext .cr_x_axis .cr_tick {
@@ -88,8 +85,9 @@
 }
 
 .croquis_nbext .cr_canvas {
-    width: 80%;
     overflow: hidden;
+
+    height: 50px;  /* Initial height before anything is drawn. */
 
     /* Needed here so that the .inner div works relative to this. */
     position: relative;
@@ -178,42 +176,38 @@
 }
 
 .croquis_nbext .cr_legend {
-    width: 20%;
-    position: relative;
-}
-
-.croquis_nbext .cr_legend .cr_legend_div {
-    position: absolute;
-    top: 20px;
-    bottom: 20px;
-    left: 20px;
-    right: 0px;
+    flex: 0.1 1 160px;
+    min-width: 120px;
 
     display: flex;
     flex-direction: column;
+
+    padding: 20px 0px 0px 20px;
+
+    font-size: 12px;
+    line-height: normal;
 }
 
 /* https://stackoverflow.com/a/63890844 */
-.croquis_nbext .cr_legend .cr_legend_div li + li {
+.croquis_nbext .cr_legend li + li {
     margin-top: 3px;
 }
 
-.croquis_nbext .cr_legend .cr_legend_div .cr_searchbox input {
+.croquis_nbext .cr_legend .cr_searchbox input {
     width: 100%;
     font-family: monospace;
 }
 
-.croquis_nbext .cr_legend .cr_legend_div .cr_search_ctrl {
+.croquis_nbext .cr_legend .cr_search_ctrl {
     text-align: left;
     font-size: 90%;
-    line-height: 125%;  /* TODO: Doesn't seem working? */
 
     margin-top: 15px;
 
     position: relative;
 }
 
-.croquis_nbext .cr_legend .cr_legend_div .cr_search_ctrl ul.cr_btn_popup {
+.croquis_nbext .cr_legend .cr_search_ctrl ul.cr_btn_popup {
     visibility: hidden;
 
     background-color: #ffe;
@@ -227,50 +221,46 @@
     left: 15px;
 }
 
-.croquis_nbext .cr_legend .cr_legend_div .cr_search_ctrl input {
+.croquis_nbext .cr_legend .cr_search_ctrl input[type="checkbox"] {
     margin: 0px;
     vertical-align: middle;
 }
 
-.croquis_nbext .cr_legend .cr_legend_div .cr_search_stat {
+.croquis_nbext .cr_legend .cr_search_stat {
     text-align: left;
     font-size: 90%;
     color: #852400;
 }
 
-.croquis_nbext .cr_legend .cr_legend_div ul.cr_search_result {
-    flex-grow: 1;
+.croquis_nbext .cr_legend ul.cr_search_result {
+    flex: 1 0 100px;
     overflow: auto;
 
     list-style-type: none;
-    margin-left: 0px;
-    margin-right: 0px;
+    margin: 15px 0px 15px 0px;
     padding: 0px;
-
-    margin-top: 15px;
-    margin-bottom: 15px;
 }
 
-.croquis_nbext .cr_legend .cr_legend_div ul.cr_search_result li {
+.croquis_nbext .cr_legend ul.cr_search_result li {
     text-align: left;
     font-family: monospace;
     white-space: nowrap;
 }
 
-.croquis_nbext .cr_legend .cr_legend_div ul.cr_search_result li:hover {
+.croquis_nbext .cr_legend ul.cr_search_result li:hover {
     background-color: #dff;
 }
 
-.croquis_nbext .cr_legend .cr_legend_div ul.cr_search_result li input {
+.croquis_nbext .cr_legend ul.cr_search_result li input[type="checkbox"] {
     margin: 0px 0.5em 0px 0px;  /* only 0.5em on right */
     vertical-align: middle;
 }
 
-.croquis_nbext .cr_legend .cr_legend_div ul.cr_search_result li svg {
+.croquis_nbext .cr_legend ul.cr_search_result li svg {
     vertical-align: middle;
 }
 
-.croquis_nbext .cr_legend .cr_legend_div .cr_info {
+.croquis_nbext .cr_legend .cr_info {
     flex: 0 0 70px;
 
     background-color: #dff;  /* test */

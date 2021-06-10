@@ -2168,29 +2168,28 @@ class TileHandler {
 //  - div #croquis_nbext : outermost container
 //    - div #{{canvas_id}}-btns : buttons for debugging
 //    - div #{{canvas_id}} .cr_main : the whole area including axes
-//      - div .cr_ctrl_panel  : floating "control panel"
-//      - table
-//        - tr
-//          - td .cr_y_axis : y axis
-//          - td .cr_canvas : the main canvas --> this.canvas
+//      - div .cr_ctrl_panel  : "Control panel" at the top.
+//      - div .cr_main1
+//        - div .cr_y_axis : y axis
+//        - div cr_canvas_plus_x_axis
+//          - div .cr_canvas : the main canvas --> this.canvas
 //            - div .cr_progressbar : "please wait" message
 //            - div .cr_inner       : regular (non-highlight) tiles go here
 //            - div .cr_foreground  : highlight tiles go here
 //            - div .cr_grid        : coordinate grids
 //            - div .cr_select_area : shows selected area when dragging
-//          - td .cr_legend : legends and selection
-//            - div .cr_searchbox : search box
-//            - div .cr_search_ctrl
-//              - input .cr_XXX : search control buttons
-//              - button .cr_more : opens the pop-up box
-//              - ul .cr_btn_popup : pop-up box
-//                - li
-//                  - a .cr_XXX : "buttons" for selection updates
-//            - div .cr_search_stat : "showing 200 of 3,456 results"
-//            - ul .cr_search_result : labels matching the search pattern
-//            - div .cr_info : info about what's under the mouse cursor
-//        - tr
-//          - td .cr_x_axis : x axis
+//          - div .cr_x_axis : x axis
+//        - div .cr_legend : legends and items selection
+//          - div .cr_searchbox : search box
+//          - div .cr_search_ctrl
+//            - input .cr_XXX : search control buttons
+//            - button .cr_more : opens the pop-up box
+//            - ul .cr_btn_popup : pop-up box
+//              - li
+//                - a .cr_XXX : "buttons" for selection updates
+//          - div .cr_search_stat : "Showing 200 of 3,456 results"
+//          - ul .cr_search_result : labels matching the search pattern
+//          - div .cr_info : info about what's under the mouse cursor
 //    - div id={{canvs_id}}-log : debug logs --> this.log_area
 //
 // See also display.py for HTML structure.
@@ -2292,6 +2291,10 @@ class Ctxt {
             }
             this.height = msg_dict.h;
             this.canvas.style.height = msg_dict.h + 'px';
+
+            // Add 2px (width of the x axis).
+            this.canvas_main.querySelector('.cr_y_axis').style.height =
+                (msg_dict.h + 2) + 'px';
 
             this.tile_handler.register_canvas_config(msg_dict);
 

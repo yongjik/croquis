@@ -79,45 +79,42 @@ class DisplayObj(object):
              id="{{canvas_id}}-pan" value="pan"/>
       <label for="{{canvas_id}}-pan">pan</label>
     </div>
-    <table>
-      <tr>
-        <td class="cr_y_axis"></td>
-        <td class="cr_canvas">
+    <div class="cr_main1" dir="ltr">
+      <!-- The height of cr_y_axis must be manually adjusted to match (canvas
+           height) + (width of x axis line).  -->
+      <div class="cr_y_axis"></div>
+      <div class="cr_canvas_plus_x_axis">
+        <div class="cr_canvas">
           <div class="cr_progressbar">Please wait, the graph is being generated ...</div>
           <div class="cr_inner"></div>
           <div class="cr_foreground"></div>
           <div class="cr_grid"></div>
           <div class="cr_select_area"></div>
-        </td>
-        <td class="cr_legend" rowspan=2>
-          <div class="cr_legend_div">
-            <div class="cr_searchbox">
-              <input type="text" placeholder="(all shown)"/>
-            </div>
-            <div class="cr_search_ctrl">
-              <input type=checkbox class="cr_regex"/> Regex
-              <input type=checkbox class="cr_autoselect" checked/> Autoselect
-              <button class="cr_more">More...</button>
-              <ul class="cr_btn_popup">
-                  <li><a class="cr_select_all">Select all</a></li>
-                  <li><a class="cr_deselect_all">Deselect all</a></li>
-                  <!-- text for the following two links are filled in
-                  dynamically. -->
-                  <li><a class="cr_select_matching"></a></li>
-                  <li><a class="cr_deselect_matching"></a></li>
-              </ul>
-            </div>
-            <div class="cr_search_stat"></div>
-            <ul class="cr_search_result"></ul>
-            <div class="cr_info"></div>
-          </div>
-        </td>
-      </tr>
-      <tr>
-        <td></td>
-        <td class="cr_x_axis"></td>
-      </tr>
-    </table>
+        </div>
+        <div class="cr_x_axis"></div>
+      </div>
+      <div class="cr_legend">
+        <div class="cr_searchbox">
+          <input type="text" placeholder="(all shown)"/>
+        </div>
+        <div class="cr_search_ctrl">
+          <input type=checkbox class="cr_regex"/>Regex
+          <input type=checkbox class="cr_autoselect" checked/>Autoselect
+          <button class="cr_more">More...</button>
+          <ul class="cr_btn_popup">
+              <li><a class="cr_select_all">Select all</a></li>
+              <li><a class="cr_deselect_all">Deselect all</a></li>
+              <!-- text for the following two links are filled in
+                   dynamically. -->
+              <li><a class="cr_select_matching"></a></li>
+              <li><a class="cr_deselect_matching"></a></li>
+          </ul>
+        </div>
+        <div class="cr_search_stat"></div>
+        <ul class="cr_search_result"></ul>
+        <div class="cr_info"></div>
+      </div>
+    </div>
     {% if debug %}
     <!-- <div class="cr_dbg_status"></div> -->
     {% endif %}
