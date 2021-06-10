@@ -48,8 +48,8 @@ class Plotter {
 
     // Keeps track of which items are currently enabled for drawing.
     //
-    // Initialized when cell_init message is received: once it is initialized,
-    // we don't accept any more FigureData.
+    // Initialized by Python's Plotter.show(): once it is initialized, we
+    // don't accept any more FigureData.
     optional<SelectionMap> sm_;
     bool show_called() const { return bool(sm_); }
 
@@ -141,16 +141,17 @@ class Plotter {
                          std::unique_ptr<FigureData> fd);
 
   public:
-    // Called from the FE with initial canvas size: initializes the initial
-    // canvas (config ID #0) and enqueues tasks to draw tiles.
-    void cell_init_handler(int width, int height);
+    // Called from FE (1) when initializing, and (2) when the canvas size
+    // changes.
+    // We initialize a new canvas config and enqueue tasks to draw tiles.
+    void resize_handler(int width, int height);
 
     // Create another config by zooming into the existing canvas config.
     void zoom_req_handler(int config_id, int zoom_level,
                           float px0, float py0, float px1, float py1);
 
   private:
-    // Called by cell_init_handler() or zoom_req_handler(): initialize a new
+    // Called by resize_handler() or zoom_req_handler(): initialize a new
     // canvas config and launch tile computation.
     // Must be called with mutex held.
     void init_canvas(const std::unique_lock<std::mutex> &lck,

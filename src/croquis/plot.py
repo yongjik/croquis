@@ -62,7 +62,7 @@ class Plotter(object):
         sm = self._C.init_selection_map()
         self.selection_map = np.frombuffer(sm, dtype=bool)
 
-        self.disp.register_handler('cell_init', self._cell_init_handler)
+        self.disp.register_handler('resize', self._resize_handler)
         self.disp.register_handler('cell_fini', self._cell_fini_handler)
         self.disp.register_handler('zoom_req', self._zoom_req_handler)
         self.disp.register_handler('axis_req', self._axis_req_handler)
@@ -73,12 +73,11 @@ class Plotter(object):
 
         self.disp.show()
 
-    # Called when the canvas is ready.
-    def _cell_init_handler(self, canvas_id, msgtype, msg):
+    # Called when the canvas is ready or its size changes.
+    def _resize_handler(self, canvas_id, msgtype, msg):
         data = msg['content']['data']
         width, height = data['w'], data['h']
-        self._C.cell_init_handler(width, height)
-        self._search_labels({'pat': '', 'regex': False})
+        self._C.resize_handler(width, height)
 
     # Called by C++ code via callback mechanism.
     def _send_msg(self, json_data, data1, data2):

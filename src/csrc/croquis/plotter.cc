@@ -55,7 +55,7 @@ std::pair<bool *, size_t> Plotter::init_selection_map()
     return { const_cast<bool *>(sm_->m.get()), sm_->sz };
 }
 
-void Plotter::cell_init_handler(int width, int height)
+void Plotter::resize_handler(int width, int height)
 {
     std::unique_lock<std::mutex> lck(m_);
 
@@ -75,7 +75,6 @@ void Plotter::cell_init_handler(int width, int height)
     std::tie(y0, y1) = util::initial_range(range_.ymin, range_.ymax);
     CanvasConfig *canvas =
         add_canvas_config(lck, width, height, x0, y0, x1, y1);
-    CHECK(canvas->id == 0);
 
     DBG_LOG1(DEBUG_PLOT,
              "x0 y0 x1 y1 = %f %f %f %f\n", x0, y0, x1, y1);

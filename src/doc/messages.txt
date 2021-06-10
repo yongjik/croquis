@@ -7,9 +7,23 @@ one should manually update this document whenever code changes.
 Hopefully that's not too much effort.  (Using something like protocol buffer
 would solve that problem, but it comes with its own dependency hassle ...)
 
-cell_init (FE):
+resize (FE):
+    # Tell BE that the width of the canvas has changed - also doubles as
+    # initialization message.
+    #
+    # Currently we don't support changing height from FE, so height is always
+    # supplied by BE in `new_canvas_config` message.
+
+    {
+        w: 800,  # Width of the canvas.
+        h: 600,  # Height of the canvas: currently ignored.
+    }
 
 cell_fini (FE):
+    # Called when the cell output is cleared, so that BE can free resources.
+    # Contains no arguments.
+    #
+    # TODO: Not properly tested yet!
 
 zoom_req (FE):
     # This message will trigger Plotter::init_canvas(), which will generate a
@@ -32,8 +46,8 @@ zoom_req (FE):
 new_canvas_config (BE):
     {
         config_id: 123,  # New canvas config ID.
-        w: 600,  # Width of the canvas.
-        h: 800,  # Height of the canvas.
+        w: 800,  # Width of the canvas.
+        h: 600,  # Height of the canvas.
 
         # The shown area in data coordinate.
         x0: 1.234,

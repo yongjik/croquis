@@ -103,7 +103,7 @@ PYBIND11_MODULE(_csrc, m) {
                 return p.get_sm_version();
             }
         )
-        .def("cell_init_handler", &croquis::Plotter::cell_init_handler,
+        .def("resize_handler", &croquis::Plotter::resize_handler,
              py::call_guard<py::gil_scoped_release>())
         .def("zoom_req_handler", &croquis::Plotter::zoom_req_handler,
              py::call_guard<py::gil_scoped_release>())

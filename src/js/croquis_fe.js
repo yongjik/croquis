@@ -39,7 +39,21 @@ function hide(elem) { elem.style.display = 'none'; }
 function unhide(elem) { elem.style.display = null; }
 
 // Add a module-level resize handler.
-$(window).resize(resize_handler);
+window.addEventListener('resize', resize_handler);
+
+// It's possible that the cell's output width is changed even without window
+// resizing.  For example, a cell may execute something like:
+//      from IPython.core.display import display, HTML
+//      display(HTML("<style>.container { width:100% !important; }</style>"))
+//
+// Apparently it's very hard to add a generic "resize handler" for individual
+// elements.  (There's a library for it [https://github.com/marcj/css-element-queries]
+// but I don't want to add too much dependency.)  So, let's just periodically
+// check if cell size changed.  It doesn't need to be fast as such an event
+// should be pretty infrequent (for now).
+//
+// TODO: I need to clean up this handler once the module is unloaded?
+let resize_timer = window.setInterval(resize_handler, 500 /* ms */);
 
 function load_ipython_extension() {
     console.log('croquis_fe module loaded by Jupyter:', module.id);
@@ -1977,8 +1991,10 @@ class TileHandler {
         }
     }
 
+    // If (ev == null) then we're being called manually by Ctxt: then we don't
+    // need to update version because this should be the first call.
     search_handler(ev) {
-        if (this.btn_autoselect.checked) {
+        if (ev != null && this.btn_autoselect.checked) {
             this.ctxt.send('search', {
                 version: this.tile_set.new_sm_version(),
                 pat: this.searchbox.value,
@@ -2229,7 +2245,9 @@ class Ctxt {
                         'w=', this.width, 'h=', this.height);
             console.log('Initial canvas width/height: ',
                         'w=', this.width, 'h=', this.height);
-            this.send('cell_init', {'w': this.width, 'h': this.height});
+
+            this.send('resize', {'w': this.width, 'h': this.height});
+            this.tile_handler.search_handler(null);
 
             // Prepare the progress indicator to fire if BE takes too long.
             setTimeout(() => {
@@ -2251,11 +2269,16 @@ class Ctxt {
             '(see developer console for details): ' + err;
     }
 
-    // Resize handler.
+    // Called when the window size *may* have changed: see the discussion at the
+    // top of this file about window.setInterval().
     resize_handler() {
         let width = this.canvas.clientWidth;
         let height = this.canvas.clientHeight;
-        if (width != this.width || height != this.height) {
+
+        // Let's only consider the width for now: the height is adjusted
+        // according to the width.
+        // TODO: Add support for dynamically updating canvas size?
+        if (width != this.width) {
             this.width = width;
             this.height = height;
             this.dbglog(
@@ -2290,9 +2313,10 @@ class Ctxt {
 
         if (msg_dict.msg == 'new_canvas_config') {
             // For now, we only set the height: width follows the page
-            // layout, so `msg_dict.w` must equal the current canvas width.
+            // layout, so `msg_dict.w` must equal the current canvas width,
+            // unless the user is continuously resizing the window.
             if (this.width != msg_dict.w) {
-                console.log("Error: width returned from BE doesn't match!");
+                console.log("Warning: width returned from BE doesn't match!");
                 // TODO: Now what?
             }
             this.height = msg_dict.h;
