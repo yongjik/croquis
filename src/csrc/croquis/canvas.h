@@ -154,7 +154,7 @@ class CanvasConfig {
 
     struct Point { double x, y; };
 
-    Point get_data_coord(int zoom_level, double px, double py) {
+    Point get_data_coord(int zoom_level, double px, double py) const {
         Point pt;
 
         double inv_zoom = pow(ZOOM_FACTOR, -zoom_level);

@@ -17,6 +17,15 @@ resize (FE):
     {
         w: 800,  # Width of the canvas.
         h: 600,  # Height of the canvas: currently ignored.
+
+        # Optional: state of the current canvas, so that BE can generate canvas
+        # for the same region.  See axis_req below for `x_offset` & `y_offset`.
+        #
+        # If not present, BE generate canvas that shows the whole data.
+        config_id: 123,
+        zoom_level: 0,
+        x_offset: 10,
+        y_offset: 3,
     }
 
 cell_fini (FE):

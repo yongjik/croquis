@@ -55,7 +55,9 @@ std::pair<bool *, size_t> Plotter::init_selection_map()
     return { const_cast<bool *>(sm_->m.get()), sm_->sz };
 }
 
-void Plotter::resize_handler(int width, int height)
+void Plotter::resize_handler(int width, int height,
+                             int config_id, int zoom_level,
+                             float x_offset, float y_offset)
 {
     std::unique_lock<std::mutex> lck(m_);
 
@@ -70,9 +72,29 @@ void Plotter::resize_handler(int width, int height)
         return;
     }
 
-    float x0, y0, x1, y1;
-    std::tie(x0, x1) = util::initial_range(range_.xmin, range_.xmax);
-    std::tie(y0, y1) = util::initial_range(range_.ymin, range_.ymax);
+    double x0, y0, x1, y1;
+
+    if (config_id == -1) {
+        std::tie(x0, x1) = util::initial_range(range_.xmin, range_.xmax);
+        std::tie(y0, y1) = util::initial_range(range_.ymin, range_.ymax);
+    }
+    else {
+        const CanvasConfig *prev_canvas = configs_.at(config_id).get();
+        CHECK(prev_canvas != nullptr);
+        
+        // Compute data coordinates for the given offset.
+        float inv_zoom = powf(ZOOM_FACTOR, -zoom_level);
+        CanvasConfig::Point pt0 = prev_canvas->get_data_coord(
+            zoom_level, -x_offset, (prev_canvas->h - 1) - y_offset);
+        CanvasConfig::Point pt1 = prev_canvas->get_data_coord(
+            zoom_level, (prev_canvas->w - 1) -x_offset, -y_offset);
+
+        x0 = fmin(pt0.x, pt1.x);
+        y0 = fmin(pt0.y, pt1.y);
+        x1 = fmax(pt0.x, pt1.x);
+        y1 = fmax(pt0.y, pt1.y);
+    }
+
     CanvasConfig *canvas =
         add_canvas_config(lck, width, height, x0, y0, x1, y1);
 

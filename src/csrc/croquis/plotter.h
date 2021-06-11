@@ -144,7 +144,12 @@ class Plotter {
     // Called from FE (1) when initializing, and (2) when the canvas size
     // changes.
     // We initialize a new canvas config and enqueue tasks to draw tiles.
-    void resize_handler(int width, int height);
+    //
+    // If we're resizing, the last four arguments indicate the current state of
+    // the canvas, so that the new canvas can show the same area.
+    void resize_handler(int width, int height,
+                        int config_id, int zoom_level,
+                        float x_offset, float y_offset);
 
     // Create another config by zooming into the existing canvas config.
     void zoom_req_handler(int config_id, int zoom_level,

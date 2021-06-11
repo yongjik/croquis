@@ -2220,6 +2220,13 @@ class Ctxt {
         this.canvas_id = canvas_id;
         this.canvas_main = document.querySelector('#' + canvas_id);
         this.canvas = document.querySelector(`#${canvas_id} .cr_canvas`);
+
+        // TODO: This is confusing, as we also have TileSet.width/height.
+        //       Currently, Ctxt.width/height is updated when we *send* resize
+        //       request to BE; TileSet.width/height is updated when we get back
+        //       the `new_canvas_config` message.
+        //
+        //       We need a better way to handle window resize ...
         this.width = this.height = null;
 
         // Hmm looks like we can't do this with vanilla JS ...
@@ -2234,6 +2241,9 @@ class Ctxt {
             this.dbglog('Cell ID = ', canvas_id);
         }
 
+        // Pedantic: must be after `this.tile_handler` is initialized, because
+        // after this this.resize_handler() may be called, which uses
+        // `tile_handler`.
         ctxt_map[canvas_id] = this;
 
         // Get the current window size and send it as part of the init
@@ -2278,13 +2288,23 @@ class Ctxt {
         // Let's only consider the width for now: the height is adjusted
         // according to the width.
         // TODO: Add support for dynamically updating canvas size?
-        if (width != this.width) {
-            this.width = width;
-            this.height = height;
-            this.dbglog(
-                'Cell resized to width = ', width, ' height = ', height);
-            this.send('resize', {'w': width, 'h': height});
+        if (width == this.width) return;
+
+        this.width = width;
+        this.height = height;
+
+        let msg = {w: width, h: height};
+
+        let tile_set = this.tile_handler.tile_set;
+        if (tile_set.config_id != null) {
+            msg.config_id = tile_set.config_id;
+            msg.zoom_level = tile_set.zoom_level;
+            msg.x_offset = tile_set.x_offset;
+            msg.y_offset = tile_set.y_offset;
         }
+
+        this.dbglog('Cell resized to width = ', width, ' height = ', height);
+        this.send('resize', msg);
     }
 
     // Cleanup handler: tell the server that this canvas is gone.

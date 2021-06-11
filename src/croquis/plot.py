@@ -77,7 +77,12 @@ class Plotter(object):
     def _resize_handler(self, canvas_id, msgtype, msg):
         data = msg['content']['data']
         width, height = data['w'], data['h']
-        self._C.resize_handler(width, height)
+        config_id = data.get('config_id', -1)
+        zoom_level = data.get('zoom_level', 0)
+        x_offset = data.get('x_offset', -1)
+        y_offset = data.get('y_offset', -1)
+        self._C.resize_handler(
+            width, height, config_id, zoom_level, x_offset, y_offset)
 
     # Called by C++ code via callback mechanism.
     def _send_msg(self, json_data, data1, data2):
