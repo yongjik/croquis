@@ -247,6 +247,12 @@
     white-space: nowrap;
 }
 
+/* When highlighted, e.g., by hovering over the line on canvas. */
+.croquis_nbext .cr_legend ul.cr_search_result li.highlighted {
+    background-color: #dff;
+    font-weight: bold;
+}
+
 .croquis_nbext .cr_legend ul.cr_search_result li:hover {
     background-color: #dff;
 }

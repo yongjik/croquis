@@ -526,12 +526,39 @@ class Label {
         this.elem.appendChild(this.create_line_svg());
 
         this.elem.appendChild(document.createTextNode(this.label));
+
+        this.highlighted = false;
+
+        let cb2 = (ev) => cb(this, ev);
+        this.elem.addEventListener('mouseenter', cb2);
+        this.elem.addEventListener('mousemove', cb2);
+        this.elem.addEventListener('mouseleave', cb2);
     }
 
-    set_selected(selected) {
+    // `selected` is boolean.
+    update_selected(selected) {
         if (this.item_id == ITEM_ID_SENTINEL) return;
         this.selected = selected;
         this.checkbox.checked = selected;
+        if (selected == false) this.update_highlight(false);
+    }
+
+    // `highlighted` is boolean.
+    update_highlight(highlighted) {
+        if (this.item_id == ITEM_ID_SENTINEL) return;
+
+        if (highlighted && !this.highlighted) {
+            this.highlighted = true;
+            this.elem.classList.add('highlighted');
+        }
+        else if (!highlighted && this.highlighted) {
+            this.highlighted = false;
+            this.elem.classList.remove('highlighted');
+        }
+    }
+
+    clear_highlight() {
+        if (this.item_id == ITEM_ID_SENTINEL) return;
     }
 
     // Create a simple line/marker image to show in the legend.
@@ -569,6 +596,9 @@ class Label {
 
 const TILE_CACHE_MAXSIZE = 500;
 
+const HIGHLIGHT_VIA_CANVAS = 'canvas';
+const HIGHLIGHT_VIA_SEARCH = 'search';
+
 // Keeps track of the tiles currently being shown in the canvas.
 //
 // We keep the outer div (.cr_canvas) with "overflow: hidden", and the
@@ -600,6 +630,15 @@ class TileSet {
         this.config_id = null;  // No canvas config available yet.
         this.zoom_level = 0;
         this.highlight_item_id = null;
+
+        // Currently there are two ways highlight can be triggered: by hovering
+        // over the canvas, and hovering over the search result area.  We need
+        // to distinguish the two cases, because when the search result is
+        // updated, highlight should be updated (currently just cleared) only
+        // for the latter case.
+        //
+        // When highlight is off, this value should be also `null`.
+        this.highlight_trigger = null;
 
         // Panning offset, using screen coordinate.  E.g., if offset is (10, 3),
         // then the tiles are shifted 10 pixels to the right and 3 pixels down.
@@ -663,8 +702,9 @@ class TileSet {
 
     // Enable highlight layer with the given item.  If `item_id == null`,
     // turn off the highlight layer.
-    set_highlight(item_id) {
+    set_highlight(item_id, trigger_type) {
         this.highlight_item_id = item_id;
+        this.highlight_trigger = trigger_type;
 
         // Remove already existing highlight tiles if necessary.
         for (let tile of this.visible_tiles.values()) {
@@ -1051,7 +1091,7 @@ class TileHandler {
         let btns_div = document.querySelector(`#${ctxt.canvas_id}-btns`);
         this.replayer = new EventReplayer(btns_div, {
             reset: () => {
-                this.tile_set.set_highlight(null);
+                this.tile_set.set_highlight(null, null);
                 this.tile_set.tile_cache.clear();
                 this.reset_state();
             },
@@ -1114,7 +1154,9 @@ class TileHandler {
 
         this.search_result_area = qs('.cr_search_result');
         // Keeps track of labels in the search result area.
-        this.labels = [new Label(ITEM_ID_SENTINEL, false, null, null)];
+        this.labels = [new Label(ITEM_ID_SENTINEL, false, null, null, null)];
+        this.label_map = new Map();
+        this.highlighted_label = null;
 
         (this.btn_regex = qs('.cr_regex')).addEventListener(
             'change', (ev) => this.search_handler(ev));
@@ -1350,7 +1392,16 @@ class TileHandler {
 
         // Re-compute best highlight, in case what we received is a
         // highglight tile.
-        if (has_hover) this.update_highlight(true);
+        if (has_hover) {
+            // If highlight was triggered via search, just re-set the same
+            // item_id: it will pick up any new tile if applicable.
+            if (this.tile_set.highlight_trigger == HIGHLIGHT_VIA_SEARCH) {
+                this.tile_set.set_highlight(
+                    this.tile_set.highlight_item_id, HIGHLIGHT_VIA_SEARCH);
+            }
+            else
+                this.recompute_highlight(true);
+        }
     }
 
     // `evname`: event name (or 'stopped' if we're called by `mouse_stopped_cb`.
@@ -1421,7 +1472,7 @@ class TileHandler {
                 );
             }
 
-            this.update_highlight(true);
+            this.recompute_highlight(true);
             return;
 
           case 'select->mousemove':
@@ -1482,7 +1533,7 @@ class TileHandler {
 
           case 'up->stopped':
             this.handle_mouse_stop(x, y);
-            this.update_highlight(false);
+            this.recompute_highlight(false);
             return;
         }
     }
@@ -1735,11 +1786,16 @@ class TileHandler {
     // Given a list of item ID's, check which tiles are missing and
     // construct a request for these missing tiles.
     //
+    // A "waypoint" usually contains `x`, `y`, and `item_id`, when we're
+    // called by label_mouse_handler(), it only contains `item_id` because
+    // there's obviously no meaningful coordinate inside the search area.
+    //
     // See messages.txt for `tile_req` message format.
     create_highlight_req(waypoints) {
         this.replayer.log('create_highlight_req: currently has ' +
                           `${this.inflight_reqs.size} in-flight requests.`);
         this.expire_old_requests();
+        const all_coords = this.tile_set.get_all_tile_coords();
 
         // Map of "priority coordinates" (i.e., where the mouse cursor is
         // expected to pass) so that BE can compute them before others.
@@ -1750,12 +1806,19 @@ class TileHandler {
                 prio_coords.set(waypoint.item_id, new Set());
             }
 
-            const [row, col] =
-                this.tile_set.get_tile_coord(waypoint.x, waypoint.y);
-            prio_coords.get(waypoint.item_id).add(`${row}:${col}`);
+            if ('x' in waypoint) {
+                const [row, col] =
+                    this.tile_set.get_tile_coord(waypoint.x, waypoint.y);
+                prio_coords.get(waypoint.item_id).add(`${row}:${col}`);
+            }
+            else {
+                // This is called by label_mouse_handler(): there's no
+                // coordinate, so we consider everything as "priority".
+                for (let [row, col] of all_coords)
+                    prio_coords.get(waypoint.item_id).add(`${row}:${col}`);
+            }
         }
 
-        const all_coords = this.tile_set.get_all_tile_coords();
         let throttled = false;
         let fill_tile_reqs = (tile_req_buf, item_id, is_prio) => {
             for (let [row, col] of all_coords) {
@@ -1821,12 +1884,12 @@ class TileHandler {
     // Find the best current matching item for highlight (it may not be the
     // one right under the mouse cursor, if the data is not available yet).
     // Then update highlight if necessary.
-    update_highlight(is_mouse_moving) {
+    recompute_highlight(is_mouse_moving) {
         const [x, y] = [this.mouse_x, this.mouse_y];
         const [row, col] = this.tile_set.get_tile_coord(x, y);
 
         this.replayer.log(
-            `update_highlight() called: x=${x} y=${y} row=${row} col=${col}`);
+            `recompute_highlight() called: x=${x} y=${y} row=${row} col=${col}`);
 
         // First, let's do an exhaustive search for all points within
         // EXHAUSTIVE_SEARCH_RADIUS of the current pixel.
@@ -1870,7 +1933,7 @@ class TileHandler {
         }
 
         // For debugging.
-        this.replayer.log(`update_highlight: best id ${best_item_id} ` +
+        this.replayer.log(`recompute_highlight: best id ${best_item_id} ` +
                           'current = ' + this.tile_set.highlight_item_id);
 //      this.canvas.querySelector('.cr_dbg_status').textContent =
 //          `x=${x} y=${y} best ID = ${best_item_id}`;
@@ -1902,7 +1965,7 @@ class TileHandler {
 
         if (best_item_id != null) {
             this.highlight_change_time = this.replayer.rel_time;
-            this.set_highlight(best_item_id);
+            this.set_highlight(best_item_id, HIGHLIGHT_VIA_CANVAS);
         }
         else {
             this.highlight_change_time = null;
@@ -1911,9 +1974,22 @@ class TileHandler {
     }
 
     // Enable highlight layer with the given item.
-    set_highlight(item_id) {
+    //
+    // `trigger_type` indicates how this highlight was triggered: either
+    // HIGHLIGHT_VIA_CANVAS or HIGHLIGHT_VIA_SEARCH.
+    set_highlight(item_id, trigger_type) {
         this.replayer.log(`>>> Setting highlight to #${item_id} ...`);
-        this.tile_set.set_highlight(item_id);
+        this.tile_set.set_highlight(item_id, trigger_type);
+
+        if (this.highlighted_label != null &&
+            this.highlighted_label.item_id != item_id)
+            this.highlighted_label.update_highlight(false);
+
+        let label = this.label_map.get(item_id);
+        if (label != null) {
+            this.highlighted_label = label;
+            label.update_highlight(true);
+        }
 
         this.update_T = this.replayer.rel_time;
         if (this.hide_cb) {
@@ -1924,6 +2000,8 @@ class TileHandler {
     }
 
     // Turn off the current highlighted item.
+    // To avoid flickering, we actually set up a series of callbacks that may
+    // run delayed - see set_hide_cb() below.
     clear_highlight() {
         this.replayer.log('clear_highlight() called.');
         this.set_hide_cb('clear2', () => this.clear_highlight2(),
@@ -1932,7 +2010,12 @@ class TileHandler {
 
     clear_highlight2() {
         this.replayer.log('>>> Clearing highlight ...');
-        this.tile_set.set_highlight(null);
+        this.tile_set.set_highlight(null, null);
+        if (this.highlighted_label != null) {
+            this.highlighted_label.update_highlight(false);
+            this.highlighted_label = null;
+        }
+
         this.set_hide_cb('clear3', () => this.clear_highlight3(),
                          MIN_FG_VISIBLE_MSEC);
     }
@@ -2033,10 +2116,8 @@ class TileHandler {
 
         this.request_new_tiles();
 
-        for (let label of this.labels) {
-            let checkbox = label.checkbox;
-            if (checkbox != null) checkbox.checked = (msg.how == 'select');
-        }
+        for (let label of this.labels)
+            label.update_selected(msg.how == 'select');
     }
 
     // Update the "search result" area: called when we receive `labels` message
@@ -2050,6 +2131,14 @@ class TileHandler {
         let new_labels = msg_dict.labels;
         new_labels.push([ITEM_ID_SENTINEL, false, '', '']);
 
+        if (this.tile_set.highlight_trigger == HIGHLIGHT_VIA_SEARCH &&
+            this.highlighted_label != null) {
+
+            this.highlighted_label.update_highlight(false);
+            this.highlighted_label = null;
+            clear_highlight();
+        }
+
         // Scan the list of existing labels (`old_labels`) and the list of new
         // labels to populate (`new_labels`): delete/create/copy as necessary.
         let old_idx = 0;
@@ -2061,6 +2150,9 @@ class TileHandler {
             if (old_id < new_id) {
                 // This label is no longer needed: delete.
                 old_labels[old_idx].elem.remove();
+                this.label_map.delete(old_id);
+                if (this.highlighted_label === old_labels[old_idx])
+                    this.highlighted_label = null;
                 old_idx++;
                 continue;
             }
@@ -2069,7 +2161,9 @@ class TileHandler {
                 // this.replayer.log('Creating new label: ', new_id, selected, label, style);
 
                 // This is a new label: create and append.
-                let new_label = new Label(new_id, selected, label, style);
+                let new_label = new Label(
+                    new_id, selected, label, style,
+                    (label, ev) => this.label_mouse_handler(label, ev));
 
                 let checkbox = new_label.checkbox;
                 checkbox.addEventListener('change', (ev) => {
@@ -2085,6 +2179,7 @@ class TileHandler {
                 this.search_result_area.insertBefore(
                     new_label.elem, old_labels[old_idx].elem);
                 this.labels.push(new_label);
+                this.label_map.set(new_id, new_label);
                 new_idx++;
                 continue;
             }
@@ -2098,7 +2193,7 @@ class TileHandler {
 
             // An existing label is still needed: copy to the new list.
             let existing_label = old_labels[old_idx];
-            existing_label.set_selected(selected);
+            existing_label.update_selected(selected);
             this.labels.push(existing_label);
             if (old_id == ITEM_ID_SENTINEL) break;
             old_idx++;
@@ -2114,6 +2209,38 @@ class TileHandler {
         else s = `Showing ${len} of ${msg_dict.count} matching items.`;
 
         this.search_stat_area.textContent = s;
+    }
+
+    // Called when the mouse pointer enters/leaves an item inside
+    // this.search_result_area.
+    //
+    // Update highlight if any tile is available; otherwise turn it off.
+    // Also send requests for highlight tiles if necessary.
+    label_mouse_handler(label, ev) {
+        this.replayer.log(
+            `label_mouse_handler called: item_id=${label.item_id} ` +
+            `event=${ev.type} current highlighted=${label.highlighted} ` +
+            `classlist = ${label.elem.classList}`);
+
+        const is_leave = (ev.type == 'mouseleave');
+        if (!is_leave && !label.highlighted) {
+            this.set_highlight(label.item_id, HIGHLIGHT_VIA_SEARCH);
+
+            // Send request for missing tiles, if any.
+            // TODO: This duplicates the logic of draw_prediction_line().
+            const req = this.create_highlight_req([{item_id: label.item_id}]);
+            if (req != null) {
+                this.replayer.log('Sending highlight_req:', req);
+
+                // If the replay is running, we already have previously recorded
+                // tile response events which are replayed via event handlers.
+                if (this.replayer.status != REPLAY_RUNNING)
+                    this.ctxt.send('tile_req', req);
+            }
+        }
+        else if (is_leave && label.highlighted) {
+            this.clear_highlight();
+        }
     }
 
     // Request new tiles: called after selection update and panning.
