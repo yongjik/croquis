@@ -47,6 +47,12 @@
 
 .croquis_nbext .cr_canvas_plus_x_axis {
     flex: 0.9 1 320px;
+    position: relative;
+
+    /* We need this because cr_tooltip is under this and must be visible even
+     * when it's partially out of the canvas.
+     */
+    overflow: visible;
 }
 
 .croquis_nbext .cr_x_axis {
@@ -166,6 +172,20 @@
     border-color: rgba(0, 0, 0, 0.8);
 
     user-select: none;
+}
+
+.croquis_nbext .cr_tooltip {
+    position: absolute;
+    visibility: hidden;  /* Hidden by default. */
+    background-color: #eec;
+    border-style: solid;
+    border-width: 2px;
+    /* border-color: supplied by the code; follows item color. */
+
+    padding: 5px;
+
+    max-width: 200px;
+    width: fit-content;
 }
 
 .croquis_nbext .cr_progressbar {

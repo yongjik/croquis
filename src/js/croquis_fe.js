@@ -472,7 +472,14 @@ class Tile {
         this.zoom_level = msg_dict.zoom_level;
         this.row = msg_dict.row;
         this.col = msg_dict.col;
-        this.item_id = is_hover ? msg_dict.item_id : null;
+        if (is_hover) {
+            this.item_id = msg_dict.item_id;
+            this.label = msg_dict.label;
+            this.style = msg_dict.style;
+        }
+        else {
+            this.item_id = this.label = this.style = null;
+        }
 
         this.key = tile_key(this.config_id, this.zoom_level,
                             this.row, this.col, this.item_id);
@@ -1076,6 +1083,8 @@ const MIN_FG_VISIBLE_MSEC = 500.0;
 const MAX_INFLIGHT_REQUESTS = 50;
 
 const MIN_SELECT_AREA_DIAG = 5;  // pixels
+const TOOLTIP_OFFSET_X = 25;  // pixels
+const TOOLTIP_OFFSET_Y = 10;  // pixels
 
 // Draw the "comet" showing mouse event positions, for debugging.
 // WARNING: takes a lot of resource - should be off when debugging performance!
@@ -1122,9 +1131,6 @@ class TileHandler {
         this.ctxt = ctxt;
         this.tile_set = new TileSet(ctxt);
         this.canvas = ctxt.canvas;
-        // XXX
-        // this.x_axis = qs('.cr_x_axis');
-        // this.y_axis = qs('.cr_y_axis');
         this.axis_handler = new AxisHandler(ctxt, this);
         this.fg = this.canvas.querySelector('.cr_foreground');
 
@@ -1146,6 +1152,8 @@ class TileHandler {
         // True if we started select/panning and then moved the mouse cursor out
         // of the canvas.
         this.mouseleave_fired = false;
+
+        this.tooltip = qs('.cr_tooltip');
 
         // TODO: Support replay?
         this.searchbox = qs('.cr_searchbox input');
@@ -1256,6 +1264,7 @@ class TileHandler {
     reset_state() {
         this.update_T = null;  // Last time highlight was changed.
         this.hide_cb = null;  // Set if we want to hide the foreground.
+        this.mouse_stopped = false;
         this.mouse_stopped_cb = null;
             // Fires if mouse doesn't move for a while.
         this.highlight_change_time = null;
@@ -1399,8 +1408,9 @@ class TileHandler {
                 this.tile_set.set_highlight(
                     this.tile_set.highlight_item_id, HIGHLIGHT_VIA_SEARCH);
             }
-            else
-                this.recompute_highlight(true);
+            else {
+                this.recompute_highlight();
+            }
         }
     }
 
@@ -1472,7 +1482,8 @@ class TileHandler {
                 );
             }
 
-            this.recompute_highlight(true);
+            this.mouse_stopped = false;
+            this.recompute_highlight();
             return;
 
           case 'select->mousemove':
@@ -1532,8 +1543,9 @@ class TileHandler {
             return;
 
           case 'up->stopped':
+            this.mouse_stopped = true;
             this.handle_mouse_stop(x, y);
-            this.recompute_highlight(false);
+            this.recompute_highlight();
             return;
         }
     }
@@ -1884,15 +1896,20 @@ class TileHandler {
     // Find the best current matching item for highlight (it may not be the
     // one right under the mouse cursor, if the data is not available yet).
     // Then update highlight if necessary.
-    recompute_highlight(is_mouse_moving) {
+    recompute_highlight() {
         const [x, y] = [this.mouse_x, this.mouse_y];
         const [row, col] = this.tile_set.get_tile_coord(x, y);
 
         this.replayer.log(
-            `recompute_highlight() called: x=${x} y=${y} row=${row} col=${col}`);
+            `recompute_highlight() called: ` +
+            `x=${x} y=${y} row=${row} col=${col} ` +
+            `mouse_stopped=${this.mouse_stopped}`);
 
         // First, let's do an exhaustive search for all points within
         // EXHAUSTIVE_SEARCH_RADIUS of the current pixel.
+        //
+        // (`best_tile` is needed to draw the tooltip.)
+        let best_tile = null;
         let best_item_id = null;
         let min_dist2 = sqr(MAX_DISTANCE);
         let best_x = null, best_y = null;
@@ -1908,6 +1925,7 @@ class TileHandler {
 
                 const key = this.tile_set.tile_key(row, col, item_id);
                 if (this.tile_set.has_tile(key)) {
+                    best_tile = this.tile_set.get_tile(key);
                     best_item_id = item_id;
                     min_dist2 = dist2;
                     best_x = xx; best_y = yy;
@@ -1919,13 +1937,14 @@ class TileHandler {
 
         // If we didn't find any, also check waypoints we computed so far, as
         // long as they're within MAX_DISTANCE.
-        if (best_item_id == null && is_mouse_moving) {
+        if (best_item_id == null && !this.mouse_stopped) {
             for (let item of this.waypoints) {
                 let dist2 = sqr(item.x - x) + sqr(item.y - y);
                 if (dist2 >= min_dist2) continue;
 
                 const key = this.tile_set.tile_key(row, col, item.item_id);
                 if (this.tile_set.has_tile(key)) {
+                    best_tile = this.tile_set.get_tile(key);
                     best_item_id = item.item_id;
                     min_dist2 = dist2;
                 }
@@ -1960,16 +1979,29 @@ class TileHandler {
             }
         }
 
-        if (best_item_id == this.tile_set.highlight_item_id)
-            return;  // The "best" matches our current state.
+        if (best_item_id != this.tile_set.highlight_item_id) {
+            if (best_item_id != null) {
+                this.highlight_change_time = this.replayer.rel_time;
+                this.set_highlight(best_item_id, HIGHLIGHT_VIA_CANVAS);
+            }
+            else {
+                this.highlight_change_time = null;
+                this.clear_highlight();
+            }
+        }
 
-        if (best_item_id != null) {
-            this.highlight_change_time = this.replayer.rel_time;
-            this.set_highlight(best_item_id, HIGHLIGHT_VIA_CANVAS);
+        // Enable tooltip if the mouse is stopped.
+        if (this.mouse_stopped && best_item_id != null) {
+            this.tooltip.style.visibility = 'visible';
+            this.tooltip.style.top = (this.mouse_y + TOOLTIP_OFFSET_Y) + 'px';
+            this.tooltip.style.left = (this.mouse_x + TOOLTIP_OFFSET_X) + 'px';
+            const color = best_tile.style.split(':')[0];
+            this.tooltip.style.borderColor = '#' + color;
+
+            this.tooltip.textContent = best_tile.label;
         }
         else {
-            this.highlight_change_time = null;
-            this.clear_highlight();
+            this.tooltip.style.visibility = 'hidden';
         }
     }
 
@@ -2328,6 +2360,7 @@ class TileHandler {
 //            - div .cr_grid        : coordinate grids
 //            - div .cr_select_area : shows selected area when dragging
 //          - div .cr_x_axis : x axis
+//          - div .cr_tooltip : tooltip (activates when mouse stops)
 //        - div .cr_legend : legends and items selection
 //          - div .cr_searchbox : search box
 //          - div .cr_search_ctrl

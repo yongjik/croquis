@@ -185,7 +185,19 @@ tile (BE):
         row: 1,
         col: 2,
 
-        item_id: 123,  # Optional: presents only for highlight tiles.
+        # `item_id, `label`, and `style` are optional (present only for
+        # highlight tiles).
+        item_id: 123,
+
+        # `label` and `style` are inserted by Python code.
+        # `style` is in the same format as in message `labels`.
+        #
+        # This is inefficient, because for any given highlight request we will
+        # send back multiple tiles with the same `item_id`, all with the same
+        # label/style info.  However, compared to the size of PNG data, it
+        # should be negligible.
+        label: "red line #1",
+        style: "ff0000:3:5",
     }
 
 search (FE):

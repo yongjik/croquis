@@ -95,6 +95,14 @@ class Plotter(object):
             is_transparent = 'item_id' in json_data
             data1 = png_util.generate_png(data1, is_transparent)
 
+            # Add label info.
+            if is_transparent:
+                item_id = json_data['item_id']
+                json_data['label'] = self.labels[item_id]
+                style, = self._concat_over_fd(
+                    [item_id], lambda fd, ids: fd.get_label_styles(ids))
+                json_data['style'] = style
+
             # For debugging.
            #fn = 'tile-r%d-c%d.png' % (json_data['row'], json_data['col'])
            #with open(fn, 'wb') as f:

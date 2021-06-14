@@ -92,6 +92,10 @@ class DisplayObj(object):
           <div class="cr_select_area"></div>
         </div>
         <div class="cr_x_axis"></div>
+        <!-- cr_tooltip cannot be inside cr_canvas because cr_canvas has
+             "overflow: hidden" but the tooltip could be partially out of the
+             canvas. -->
+        <div class="cr_tooltip"></div>
       </div>
       <div class="cr_legend">
         <div class="cr_searchbox">
