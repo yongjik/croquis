@@ -469,7 +469,7 @@ class Tile {
 
         this.sm_version = msg_dict.sm_version;  // Selection map version.
         this.config_id = msg_dict.config_id;
-        this.zoom_level = msg_dict.zoom;
+        this.zoom_level = msg_dict.zoom_level;
         this.row = msg_dict.row;
         this.col = msg_dict.col;
         this.item_id = is_hover ? msg_dict.item_id : null;

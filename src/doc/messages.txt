@@ -154,6 +154,40 @@ tile_req (FE):
         throttled: (true|false),
     }
 
+tile (BE):
+    # See Plotter::draw_tile_task() for details.
+    #
+    # This message also has attachments: the first is the PNG file data for the
+    # tile, and the second (presents iff it is *not* a highlight tile, i.e.,
+    # `item_id` is absent) is "hovermap", showing which item should be
+    # highlighted for each pixel.
+    {
+        # Sequence numbers that belong to this tile: a string of colon-delimited
+        # integers.
+        #
+        # Used for flow control: FE can now "forget" these sequence numbers,
+        # reducing the number of in-flight tiles.  There can be multiple numbers
+        # because of BE de-duplication.  (It's somewhat confusing, but if there
+        # are duplicate requests we just attach old duplicate seq #'s to *any*
+        # outgoing tile message, because it no longer contributes to the number
+        # of in-flight requests.  See Plotter::InflightTileInfo for details.)
+        seqs: "1234:1235:1236",
+
+        # The SelectionMap version for this request.  Note that FE always
+        # generates `sm_version` as an even number.  However, if SelectionMap
+        # was changed while the tile was being generated, the number is
+        # incremented (i.e., becomes odd) to indicate that it may be
+        # inconsistent.
+        sm_version: 10,
+
+        config_id: 123,  # Current canvas config ID.
+        zoom_level: 0,  # Current zoom level.
+        row: 1,
+        col: 2,
+
+        item_id: 123,  # Optional: presents only for highlight tiles.
+    }
+
 search (FE):
     {
         pat: pattern,

@@ -521,7 +521,7 @@ void Plotter::draw_tile_task(const PlotRequest req,
         "seqs=" + util::join_to_string(seqs, ":"),
         "#sm_version=" + std::to_string(sm_version),
         "#config_id=" + std::to_string(req.canvas->id),
-        "#zoom=" + std::to_string(req.zoom_level),
+        "#zoom_level=" + std::to_string(req.zoom_level),
         "#row=" + std::to_string(row),
         "#col=" + std::to_string(col),
     };
