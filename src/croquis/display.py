@@ -116,7 +116,7 @@ class DisplayObj(object):
         </div>
         <div class="cr_search_stat"></div>
         <ul class="cr_search_result"></ul>
-        <div class="cr_info"></div>
+        <!-- <div class="cr_info"></div> -->
       </div>
     </div>
     {% if debug %}

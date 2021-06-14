@@ -2371,7 +2371,8 @@ class TileHandler {
 //                - a .cr_XXX : "buttons" for selection updates
 //          - div .cr_search_stat : "Showing 200 of 3,456 results"
 //          - ul .cr_search_result : labels matching the search pattern
-//          - div .cr_info : info about what's under the mouse cursor
+//          // Currently commented out:
+//          // - div .cr_info : info about what's under the mouse cursor
 //    - div id={{canvs_id}}-log : debug logs --> this.log_area
 //
 // See also display.py for HTML structure.
