@@ -273,7 +273,7 @@ class EventReplayer {
         // Stolen from https://stackoverflow.com/a/50782106
         let input = document.createElement('input');
         input.type = 'file';
-        input.style.display = MOUSE_STATE_UP;
+        input.style.display = 'none';
 
         let onload = (ev) => {
             let contents = ev.target.result;
