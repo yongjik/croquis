@@ -85,7 +85,11 @@ class DisplayObj(object):
   {% endif %}
   <div id="{{canvas_id}}" class="cr_main">
     <div class="cr_ctrl_panel">
-      <button class="cr_home_btn">&#x1f3e0; Reset</button>
+      <span class="cr_ctrl_btns">
+        <button class="cr_home_btn">&#x1f3e0; Reset</button>
+        <button class="cr_zoom_in_btn">&#x1f50d;<sup>+</sup></button>
+        <button class="cr_zoom_out_btn"><small>&#x1f50d;</small><sup>-</sup></button>
+      </span>
       &nbsp; Drag mouse to:
       <input type="radio" name="{{canvas_id}}-radio"
              id="{{canvas_id}}-zoom" value="zoom" checked/>

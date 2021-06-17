@@ -14,7 +14,7 @@
     color: #950;
 }
 
-.croquis_nbext .cr_main .cr_ctrl_panel button {
+.croquis_nbext .cr_main .cr_ctrl_panel span.cr_ctrl_btns {
     margin-right: 30px;
 }
 

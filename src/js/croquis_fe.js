@@ -16,6 +16,7 @@ define([
 
 const PROGRESSBAR_TIMEOUT = 500;  // ms
 const TILE_SIZE = 256;
+const ZOOM_FACTOR = 1.5;  // Must match constants.h.
 
 let css_loaded = null;  // Promise object.
 let comm = null;  // Websocket communication channel provided by Jupyter.
@@ -607,17 +608,6 @@ const HIGHLIGHT_VIA_CANVAS = 'canvas';
 const HIGHLIGHT_VIA_SEARCH = 'search';
 
 // Keeps track of the tiles currently being shown in the canvas.
-//
-// We keep the outer div (.cr_canvas) with "overflow: hidden", and the
-// inner div (.cr_inner) in it with "overflow: visible", and then the Tiles
-// are children of the inner div, with "position: absolute".  In this way,
-// we can pan the whole image by adjusting top/left value of the inner div.
-//
-// See also display.py.
-//
-// TODO: Panning support is not written yet!
-//
-// TODO: Do we need a separate class for this?  Or merge back into Ctxt?
 class TileSet {
     constructor(ctxt) {
         // Canvas is not initialized yet.
@@ -684,6 +674,23 @@ class TileSet {
 
     get_tile(key) {
         return this.visible_tiles.get(key) || this.tile_cache.get(key) || null;
+    }
+
+    // Re-compute which tiles should be visible after config was updated (e.g.,
+    // after zoom).
+    refresh() {
+        for (let tile of this.visible_tiles.values()) {
+            // NOTE: This removes `tile` from `visible_tiles` if it's no longer
+            // visible.
+            if (!this.is_visible(tile)) this.hide_tile(tile);
+        }
+
+        for (let [key, tile] of this.tile_cache.d) {
+            if (this.is_visible(tile)) {
+                this.tile_cache.delete(key);
+                this.show_tile(tile);
+            }
+        }
     }
 
     // Add a new tile to TileSet.
@@ -766,10 +773,11 @@ class TileSet {
     // Add a tile to the visible layer.  When called, `tile` should not be in
     // any collection or DOM.
     //
-    // If `existing` is given, we use replaceChild().  In that case, `existing`
-    // should be inside this.visible_tiles when called.
+    // As an optimization, if `existing` is given, we use replaceChild() and
+    // insert `existing` into `tile_cache`.  In that case, `existing` should be
+    // inside this.visible_tiles when called.
     //
-    // TODO: Handle panning.
+    // TODO: This doesn't seem to be much of an optimization ... remove?
     show_tile(tile, existing = null) {
         this.update_tile_position(tile);
         let target = tile.is_hover() ? this.fg : this.inner_div;
@@ -831,12 +839,15 @@ class TileSet {
         if (tile.is_hover() && tile.item_id != this.highlight_item_id)
             return false;
 
-        // For now, consider any tile as visible if config_id & zoom level
-        // matches.
-        //
-        // TODO: Actually need to check coordinates to handle panning!
-        return tile.config_id == this.config_id &&
-               tile.zoom_level == this.zoom_level;
+        if (!(tile.config_id == this.config_id &&
+              tile.zoom_level == this.zoom_level))
+            return false;
+
+        const top = tile.row * TILE_SIZE + this.y_offset;
+        const left = tile.col * TILE_SIZE + this.x_offset;
+
+        return (top > -TILE_SIZE) && (top < this.height) &&
+               (left > -TILE_SIZE) && (left < this.width);
     }
 
     // Given screen coordinate (x, y), return the corresponding tile
@@ -1360,6 +1371,24 @@ class TileHandler {
         this.labels = [new Label(ITEM_ID_SENTINEL, false, null, null, null)];
         this.label_map = new Map();
         this.highlighted_label = null;
+
+        qs('.cr_home_btn').addEventListener('click', (ev) => {
+            this.ctxt.send('resize', {w: this.ctxt.width, h: this.ctxt.height});
+        });
+        qs('.cr_zoom_in_btn').addEventListener('click', (ev) => {
+            this.tile_set.zoom_level++;
+            this.tile_set.x_offset *= ZOOM_FACTOR;
+            this.tile_set.y_offset *= ZOOM_FACTOR;
+            this.tile_set.refresh();
+            this.request_new_tiles();
+        });
+        qs('.cr_zoom_out_btn').addEventListener('click', (ev) => {
+            this.tile_set.zoom_level--;
+            this.tile_set.x_offset /= ZOOM_FACTOR;
+            this.tile_set.y_offset /= ZOOM_FACTOR;
+            this.tile_set.refresh();
+            this.request_new_tiles();
+        });
 
         (this.btn_regex = qs('.cr_regex')).addEventListener(
             'change', (ev) => this.search_handler(ev));
@@ -2374,7 +2403,13 @@ class TileHandler {
 //  - div #croquis_nbext : outermost container
 //    - div #{{canvas_id}}-btns : buttons for debugging
 //    - div #{{canvas_id}} .cr_main : the whole area including axes
-//      - div .cr_ctrl_panel  : "Control panel" at the top.
+//      - div .cr_ctrl_panel : "Control panel" at the top.
+//        - span .cr_ctrl_btns
+//          - button .cr_home_btn     : home (reset) button
+//          - button .cr_zoom_in_btn  : zoom in
+//          - button .cr_zoom_out_btn : zoom out
+//        - input #{{canvas_id}}-zoom : "drag mouse to zoom"
+//        - input #{{canvas_id}}-pan  : "drag mouse to pan"
 //      - div .cr_main1
 //        - div .cr_y_axis : y axis
 //        - div cr_canvas_plus_x_axis
