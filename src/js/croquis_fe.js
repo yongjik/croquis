@@ -1059,6 +1059,226 @@ class AxisHandler {
     }
 }
 
+const MOUSE_STOP_THRESHOLD_MSEC = 30.0;
+const MIN_SELECT_AREA_DIAG = 5;  // pixels
+
+// Encapsulates mouse interaction inside the canvas.
+class CanvasMouseHandler {
+    constructor(parent, replayer, canvas) {
+        this.parent = parent;  // TileHandler.
+        this.replayer = replayer;
+        this.canvas = canvas;
+        this.zoom_radio_btn =
+            document.querySelector(`#${parent.ctxt.canvas_id}-zoom`);
+        this.select_area = this.canvas.querySelector('.cr_select_area');
+
+        this.mouse_stopped_cb = null;
+        this.reset();
+
+        this.mouse_x = null;
+        this.mouse_y = null;
+        this.mouse_btns = 0;
+
+        for (let evname of ['mousedown', 'mouseleave',
+                            'mousemove', 'mouseup']) {
+            this.canvas.addEventListener(evname, (ev) => {
+                if (this.replayer.status == REPLAY_RUNNING) return;
+
+                let rect = this.canvas.getBoundingClientRect();
+                this.mouse_x = ev.clientX - rect.left;
+                this.mouse_y = ev.clientY - rect.top;
+                this.mouse_btns = ev.buttons;
+
+                this.mouse_handler_cb(evname);
+            });
+        }
+    }
+
+    reset() {
+        // Button state: up (left button not pressed)
+        //               zoom (left button pressed for "select to zoom")
+        //               pan (left button pressed for panning)
+        this.btn = 'up';
+
+        // Movement state: moving (mouse is moving)
+        //                 stopped (mouse has stopped)
+        //                 outside (mouse is outside the canvas)
+        this.move = 'moving';
+
+        // Mouse position when we started either "select and zoom" or panning.
+        // (When this.btn == 'up', this value has no meaning.)
+        this.start_x = this.start_y = null;
+
+        // Canvas offset when we started panning.
+        this.x_offset0 = this.y_offset0 = null;
+
+        this.clear_select_area();
+        this.clear_mouse_stop_cb();
+    }
+
+    replay_mouse_event(args) {
+        this.mouse_x = args.x;
+        this.mouse_y = args.y;
+        this.mouse_btns = args.btns;
+        this.mouse_handler_cb(args.name);
+    }
+
+    // `evname`: event name (or 'stopped' if we're called by `mouse_stopped_cb`.
+    mouse_handler_cb(evname) {
+        const [x, y, btns] = [this.mouse_x, this.mouse_y, this.mouse_btns];
+        this.replayer.record_event(
+            'mouse', {name: evname, x: x, y: y, btns: btns});
+        this.replayer.log(`mouse_handler_cb: status=${this}`);
+
+        if (evname == 'mouseleave') {
+            this.move = 'outside';
+
+            // Mouse is leaving: reset everything.
+            this.clear_mouse_stop_cb();
+            this.clear_select_area();
+            this.parent.clear_highlight();
+            this.parent.tooltip.style.visibility = 'hidden';
+
+            return;
+        }
+
+        if (evname == 'stopped') {
+            this.move = 'stopped';
+            if (this.btn == 'up') {
+                this.parent.handle_mouse_stop(x, y);
+                this.parent.recompute_highlight();
+            }
+
+            return;
+        }
+
+        if (evname == 'mousemove') this.clear_mouse_stop_cb();
+
+        // Now `evname` is one of mousedown/mousemove/moseup: for that to
+        // happen, the cursor must be inside.
+        const prev_move = this.move;
+        if (this.move == 'outside') this.move = 'moving';
+
+        // Since mousedown/mouseup events can trigger for other buttons we don't
+        // care about, let's just compare the previous and current state of the
+        // primary (= "left") button and use that to decide next action.
+        const btn_was_pressed = (this.btn != 'up');
+        const btn_is_pressed = ((btns & 1) == 1);
+
+        let tile_set = this.parent.tile_set;
+
+        // Handle mouse button down transition.
+        if (evname == 'mousedown' && !btn_was_pressed && btn_is_pressed) {
+            this.parent.clear_highlight();
+            this.start_x = x;
+            this.start_y = y;
+
+            if (this.zoom_radio_btn.checked) {
+                this.btn = 'select';
+            }
+            else {
+                this.btn = 'pan';
+                this.x_offset0 = tile_set.x_offset;
+                this.y_offset0 = tile_set.y_offset;
+            }
+
+            return;
+        }
+
+        // Handle mouse button up transition.  We also check if `prev_move`
+        // is 'outside': this indicates that we pressed the button (entering
+        // 'select' or 'pan' state), and then moved the cursor outside of
+        // the canvas, and then released the button outside, and then came
+        // back.  In that case, we just reset the state and do nothing.
+        if (btn_was_pressed && !btn_is_pressed) {
+            if (this.btn == 'select' && prev_move != 'outside') {
+                let diag_len = Math.sqrt(sqr(this.start_x - x) +
+                                         sqr(this.start_y - y));
+                if (diag_len < MIN_SELECT_AREA_DIAG) {
+                    this.replayer.log(
+                        'Selected area too small, ignoring ...');
+                }
+                else {
+                    const req = {
+                        config_id: tile_set.config_id,
+                        zoom_level: tile_set.zoom_level,
+                        x0: this.start_x - tile_set.x_offset,
+                        y0: this.start_y - tile_set.y_offset,
+                        x1: x - tile_set.x_offset,
+                        y1: y - tile_set.y_offset,
+                    };
+                    this.replayer.log('Sending zoom request:', req);
+                    this.parent.ctxt.send('zoom_req', req);
+                }
+            }
+            else if (this.btn == 'pan' && prev_move != 'outside') {
+                this.parent.handle_panning(
+                    this.x_offset0 + x - this.start_x,
+                    this.y_offset0 + y - this.start_y);
+            }
+
+            this.clear_select_area();
+            this.btn = 'up';
+
+            return;
+        }
+
+        // Any other case is considered a mouse movement.
+        if (this.btn == 'up') {
+            // Update mouse history.
+            this.parent.update_mouse_history(x, y);
+            this.parent.recompute_highlight();
+            this.enqueue_mouse_stop_cb();
+        }
+        else if (this.btn == 'select') {
+            this.show_select_area(x, y);
+        }
+        else if (this.btn == 'pan') {
+            this.parent.handle_panning(this.x_offset0 + x - this.start_x,
+                                       this.y_offset0 + y - this.start_y);
+        }
+        else {
+            throw 'Should not happen!';
+        }
+    }
+
+    // Enqueue "mouse stopped" callback which will be called if the mouse cursor
+    // doesn't move for MOUSE_STOP_THRESHOLD_MSEC.
+    enqueue_mouse_stop_cb() {
+        if (this.replayer.status != REPLAY_RUNNING) {
+            this.mouse_stopped_cb =
+                setTimeout(() => this.mouse_handler_cb('stopped'),
+                           MOUSE_STOP_THRESHOLD_MSEC);
+        }
+    }
+
+    clear_mouse_stop_cb() {
+        if (this.mouse_stopped_cb) {
+            window.clearTimeout(this.mouse_stopped_cb);
+            this.mouse_stopped_cb = null;
+        }
+    }
+
+    // Called when mouse moves while (this.btn == 'zoom').
+    show_select_area(x1, y1) {
+        const [x0, y0] = [this.start_x, this.start_y];
+
+        this.select_area.style.visibility = 'visible';
+        this.select_area.style.top = Math.min(y0, y1) + 'px';
+        this.select_area.style.left = Math.min(x0, x1) + 'px';
+        this.select_area.style.width = Math.abs(x0 - x1) + 'px';
+        this.select_area.style.height = Math.abs(y0 - y1) + 'px';
+    }
+
+    clear_select_area() {
+        this.select_area.style.visibility = 'hidden';
+    }
+
+    toString() {
+        return this.btn + '-' + this.move;
+    }
+}
+
 // Constants for TileHandler.
 //
 // TODO: The highlight algorithm is too complicated: we can probably remove some
@@ -1067,7 +1287,6 @@ const HISTORY_MIN_STEP_MSEC = 5.0;
 const HISTORY_WINDOW_MSEC = 150.0;
 const PREDICT_STEP_MSEC = 20.0;
 
-const MOUSE_STOP_THRESHOLD_MSEC = 30.0;
 const PREDICT_ERROR_THRESHOLD = 5.0;  // pixels
 const HISTORY_RESET_THRESHOLD = 50.0;  // pixels
 
@@ -1082,7 +1301,6 @@ const MIN_FG_VISIBLE_MSEC = 500.0;
 
 const MAX_INFLIGHT_REQUESTS = 50;
 
-const MIN_SELECT_AREA_DIAG = 5;  // pixels
 const TOOLTIP_OFFSET_X = 25;  // pixels
 const TOOLTIP_OFFSET_Y = 10;  // pixels
 
@@ -1108,13 +1326,7 @@ class TileHandler {
             // TODO!
             // register_canvas_config: (args) => { what here? }
 
-            mouse: (args) => {
-                this.mouse_x = args.x;
-                this.mouse_y = args.y;
-                this.mouse_btns = args.btns;
-                this.mouse_handler(args.name);
-            },
-
+            mouse: (args) => this.mouse_handler.replay_mouse_event(args),
             clear2: () => this.clear_highlight2(),
             clear3: () => this.clear_highlight3(),
 
@@ -1134,25 +1346,8 @@ class TileHandler {
         this.axis_handler = new AxisHandler(ctxt, this);
         this.fg = this.canvas.querySelector('.cr_foreground');
 
-        this.zoom_radio_btn = qs(`#${ctxt.canvas_id}-zoom`);
-        this.mouse_state = 'up';  // One of 'up', 'select' (to zoom), or 'pan'.
-
-        // TODO: Now we're using "selection" to refer to the selection of items
-        // inside the search box, but here we're also using "select" to mean
-        // area selected by drag-to-zoom!  Rename this to drag_zoom_area?
-        this.select_area = this.canvas.querySelector('.cr_select_area');
-
-        // Mouse position when we started either "select and zoom" or panning.
-        // (When this.mouse_state == 'up', this value has no meaning.)
-        this.drag_start_x = this.drag_start_y = null;
-
-        // Canvas offset when we started panning.
-        this.x_offset0 = this.y_offset0 = null;
-
-        // True if we started select/panning and then moved the mouse cursor out
-        // of the canvas.
-        this.mouseleave_fired = false;
-
+        this.mouse_handler =
+            new CanvasMouseHandler(this, this.replayer, this.canvas);
         this.tooltip = qs('.cr_tooltip');
 
         // TODO: Support replay?
@@ -1244,34 +1439,15 @@ class TileHandler {
         // is clearly unacceptable.  So, we enqueue received tiles here so that
         // multiple tiles can be processed at once.
         this.received_tiles = [];
-
-        for (let evname of ['mousedown', 'mouseleave',
-                            'mousemove', 'mouseup']) {
-            this.canvas.addEventListener(evname, (ev) => {
-                if (this.replayer.status == REPLAY_RUNNING) return;
-
-                let rect = this.canvas.getBoundingClientRect();
-                this.mouse_x = ev.clientX - rect.left;
-                this.mouse_y = ev.clientY - rect.top;
-                this.mouse_btns = ev.buttons;
-
-                this.mouse_handler(evname, ev.buttons);
-            });
-        }
     }
 
     // Utility function for initializing/resetting internal state.
+    // (Used for replaying.)
     reset_state() {
         this.update_T = null;  // Last time highlight was changed.
         this.hide_cb = null;  // Set if we want to hide the foreground.
-        this.mouse_stopped = false;
-        this.mouse_stopped_cb = null;
-            // Fires if mouse doesn't move for a while.
         this.highlight_change_time = null;
             // Last time the highlighted item was changed.
-
-        // The current mouse position.
-        this.mouse_x = this.mouse_y = null;
 
         // Remember recent coordinates of mouse movement for predictive
         // highlighting.
@@ -1292,8 +1468,7 @@ class TileHandler {
         this.tile_set.add_config(msg_dict);
 
         // Cancel any selection/zoom going on, just in case.
-        this.clear_select_area();
-        this.mouse_state = 'up';
+        this.mouse_handler.reset();
 
         this.axis_handler.update(msg_dict);
     }
@@ -1414,156 +1589,6 @@ class TileHandler {
         }
     }
 
-    // `evname`: event name (or 'stopped' if we're called by `mouse_stopped_cb`.
-    mouse_handler(evname) {
-        const [x, y, btns] = [this.mouse_x, this.mouse_y, this.mouse_btns];
-        this.replayer.record_event(
-            'mouse', {name: evname, x: x, y: y, btns: btns});
-
-        if (evname == 'mousemove' && this.mouse_stopped_cb) {
-            window.clearTimeout(this.mouse_stopped_cb);
-            this.mouse_stopped_cb = null;
-        }
-
-        if (evname == 'mouseleave') {
-            this.mouseleave_fired = true;
-            this.clear_highlight();
-        }
-
-        // Since mousedown/mouseup events can trigger for other buttons we don't
-        // care about, let's just compare the previous and current state of the
-        // primary (= "left") button and use that to decide next action.
-        if (['mousedown', 'mousemove', 'mouseup'].includes(evname)) {
-            const btn_was_pressed = (this.mouse_state != 'up');
-            const btn_is_pressed = ((btns & 1) == 1);
-
-            if (evname == 'mousedown' && !btn_was_pressed && btn_is_pressed)
-                evname = 'mousedown';
-            else if (btn_was_pressed && !btn_is_pressed)
-                evname = 'mouseup';
-            else
-                evname = 'mousemove';
-
-            if (btn_is_pressed) this.mouseleave_fired = false;
-        }
-
-        const transition = `${this.mouse_state}->${evname}`;
-
-        switch (transition) {
-          // 'mousedown' can only happen during the 'up' state.
-          case 'up->mousedown':
-            this.clear_highlight();
-            this.drag_start_x = x;
-            this.drag_start_y = y;
-
-            if (this.zoom_radio_btn.checked) {
-                this.mouse_state = 'select';
-            }
-            else {
-                this.mouse_state = 'pan';
-                this.drag_start_x = x;
-                this.drag_start_y = y;
-                this.x_offset0 = this.tile_set.x_offset;
-                this.y_offset0 = this.tile_set.y_offset;
-            }
-
-            return;
-
-          case 'up->mousemove':
-            // Update mouse history.
-            this.update_mouse_history(x, y);
-
-            // Enqueue "mouse stopped" callback which will be called if the
-            // mouse cursor doesn't move for MOUSE_STOP_THRESHOLD_MSEC.
-            if (this.replayer.status != REPLAY_RUNNING) {
-                this.mouse_stopped_cb = setTimeout(
-                    () => this.mouse_handler('stopped'),
-                    MOUSE_STOP_THRESHOLD_MSEC
-                );
-            }
-
-            this.mouse_stopped = false;
-            this.recompute_highlight();
-            return;
-
-          case 'select->mousemove':
-            this.show_select_area(x, y);
-            return;
-
-          case 'pan->mousemove':
-            this.handle_panning(this.x_offset0 + x - this.drag_start_x,
-                                this.y_offset0 + y - this.drag_start_y);
-            return;
-
-          case 'up->mouseleave':
-            return;  // Nothing to do.
-
-          case 'select->mouseleave':
-            this.clear_select_area();
-            return;
-
-          case 'pan->mouseleave':
-            // Hmm seems like it's better to *not* reset when the cursor goes
-            // out of canvas ..
-            // this.handle_panning(this.x_offset0, this.y_offset0);
-            return;
-
-          case 'select->mouseup':
-            if (!this.mouseleave_fired) {
-                let diag_len = Math.sqrt(sqr(this.drag_start_x - x) +
-                                         sqr(this.drag_start_y - y));
-                if (diag_len < MIN_SELECT_AREA_DIAG) {
-                    this.replayer.log('Selected area too small, ignoring ...');
-                }
-                else {
-                    const req = {
-                        config_id: this.tile_set.config_id,
-                        zoom_level: this.tile_set.zoom_level,
-                        x0: this.drag_start_x - this.tile_set.x_offset,
-                        y0: this.drag_start_y - this.tile_set.y_offset,
-                        x1: x - this.tile_set.x_offset,
-                        y1: y - this.tile_set.y_offset,
-                    };
-                    this.replayer.log('Sending zoom request:', req);
-                    this.ctxt.send('zoom_req', req);
-                }
-            }
-
-            this.clear_select_area();
-            this.mouse_state = 'up';
-            return;
-
-          case 'pan->mouseup':
-            if (!this.mouseleave_fired) {
-                this.handle_panning(this.x_offset0 + x - this.drag_start_x,
-                                    this.y_offset0 + y - this.drag_start_y);
-            }
-
-            this.mouse_state = 'up';
-            return;
-
-          case 'up->stopped':
-            this.mouse_stopped = true;
-            this.handle_mouse_stop(x, y);
-            this.recompute_highlight();
-            return;
-        }
-    }
-
-    show_select_area(x1, y1) {
-        const [x0, y0] = [this.drag_start_x, this.drag_start_y];
-
-        this.select_area.style.visibility = 'visible';
-        this.select_area.style.top = Math.min(y0, y1) + 'px';
-        this.select_area.style.left = Math.min(x0, x1) + 'px';
-        this.select_area.style.width = Math.abs(x0 - x1) + 'px';
-        this.select_area.style.height = Math.abs(y0 - y1) + 'px';
-    }
-
-    clear_select_area() {
-        this.select_area.style.visibility = 'hidden';
-    }
-
     handle_panning(x_offset, y_offset) {
         this.tile_set.pan(x_offset, y_offset);
         this.request_new_tiles();
@@ -1575,6 +1600,7 @@ class TileHandler {
     // The mouse cursor is not moving: ask highlight tiles for exactly under the
     // cursor.
     handle_mouse_stop(x, y) {
+        this.replayer.log(`handle_mouse_stop: ${x} ${y}`);
         let item_id = this.tile_set.get_highlight_id(x, y);
         if (item_id == 'unknown') return;
 
@@ -1588,10 +1614,7 @@ class TileHandler {
 
             if (req.throttled) {
                 // We couldn't request all tiles: check later!
-                this.mouse_stopped_cb = setTimeout(
-                    () => this.mouse_handler('stopped'),
-                    MOUSE_STOP_THRESHOLD_MSEC
-                );
+                this.mouse_handler.enqueue_mouse_stop_cb();
             }
         }
     }
@@ -1897,13 +1920,13 @@ class TileHandler {
     // one right under the mouse cursor, if the data is not available yet).
     // Then update highlight if necessary.
     recompute_highlight() {
-        const [x, y] = [this.mouse_x, this.mouse_y];
+        const [x, y] = [this.mouse_handler.mouse_x, this.mouse_handler.mouse_y];
         const [row, col] = this.tile_set.get_tile_coord(x, y);
 
         this.replayer.log(
             `recompute_highlight() called: ` +
             `x=${x} y=${y} row=${row} col=${col} ` +
-            `mouse_stopped=${this.mouse_stopped}`);
+            `state=${this.mouse_handler}`);
 
         // First, let's do an exhaustive search for all points within
         // EXHAUSTIVE_SEARCH_RADIUS of the current pixel.
@@ -1937,7 +1960,7 @@ class TileHandler {
 
         // If we didn't find any, also check waypoints we computed so far, as
         // long as they're within MAX_DISTANCE.
-        if (best_item_id == null && !this.mouse_stopped) {
+        if (best_item_id == null && this.mouse_handler.move == 'moving') {
             for (let item of this.waypoints) {
                 let dist2 = sqr(item.x - x) + sqr(item.y - y);
                 if (dist2 >= min_dist2) continue;
@@ -1991,10 +2014,12 @@ class TileHandler {
         }
 
         // Enable tooltip if the mouse is stopped.
-        if (this.mouse_stopped && best_item_id != null) {
+        if (this.mouse_handler.move == 'stopped' && best_item_id != null) {
             this.tooltip.style.visibility = 'visible';
-            this.tooltip.style.top = (this.mouse_y + TOOLTIP_OFFSET_Y) + 'px';
-            this.tooltip.style.left = (this.mouse_x + TOOLTIP_OFFSET_X) + 'px';
+            this.tooltip.style.top =
+                (this.mouse_handler.mouse_y + TOOLTIP_OFFSET_Y) + 'px';
+            this.tooltip.style.left =
+                (this.mouse_handler.mouse_x + TOOLTIP_OFFSET_X) + 'px';
             const color = best_tile.style.split(':')[0];
             this.tooltip.style.borderColor = '#' + color;
 
