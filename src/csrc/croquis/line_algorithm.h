@@ -7,6 +7,8 @@
 
 #include <algorithm>  // max
 
+#include "croquis/util/logging.h"  // DBG_LOG1
+
 namespace croquis {
 
 // Draw a straigh line from (x0, y0) to (x1, y1), and "visit" all pixels on the
@@ -98,7 +100,9 @@ inline void StraightLineVisitor<F>::visit(
     const int area_height =
         (shuffle_type >= 2) ? xmax_ - xmin_ + 1 : ymax_ - ymin_ + 1;
 
-    const float invlen = 1.0f / sqrt(dx * dx + dy * dy);
+    const float len = sqrt(dx * dx + dy * dy);
+    if (len == 0.0) return;  // No line to draw.
+    const float invlen = 1.0f / len;
     const float wu = dv * (invlen * width / 2);
     const float wv = du * (invlen * width / 2);
 
@@ -134,7 +138,7 @@ inline void StraightLineVisitor<F>::visit(
             // the pixel is to the right of the drawing area, in which case
             // there's nothing to draw.
             if (slope * (area_width + 1 - (u0 - wu)) < -0.5f - (v0 + wv)) return;
-            const float uH = (u0 - wu) + (-0.5f - (v0 + wv)) / slope;
+            const float uH = (u0 - wu) + (-0.5f - (v0 + wv)) / (slope + 1e-8);
             u = nearbyintf(uH);
         }
     }
@@ -142,12 +146,16 @@ inline void StraightLineVisitor<F>::visit(
     const int umax_int = std::min((int) nearbyintf(u1 + wu), area_width - 1);
     const int vmin_int = std::max((int) nearbyintf(v0 - wv), 0);
     const int vmax_int = std::min((int) nearbyintf(v1 + wv), area_height - 1);
+
+    // if (umax_int - u > 10)
+    //     DBG_LOG1(1, "u = %d umax_int = %d\n", u, umax_int);
+
     for (; u <= umax_int; u++) {
         int vL = std::max((int) nearbyintf(vL0 + slope * u), vmin_int);
         int vH = std::min((int) nearbyintf(vH0 + slope * u), vmax_int);
         if (vL > vH) return;  // Only happens if (vL >= area_height).
 
-        // printf("  u = %d vL = %d vH = %d\n", u, vL, vH);
+        // if (vL <= vH - 2) DBG_LOG1(1, "  u = %d vL = %d vH = %d\n", u, vL, vH);
 
         for (int v = vL; v <= vH; v++) {
             // TODO: Change to branch-less code?

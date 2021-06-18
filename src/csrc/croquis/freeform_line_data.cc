@@ -5,6 +5,8 @@
 
 #include "croquis/figure_data.h"
 
+#include <inttypes.h>  // PRId64
+
 #include <algorithm>  // max
 #include <tuple>  // tie
 
@@ -62,6 +64,11 @@ void FreeformLineData::compute_intersection(
         std::max(start_atom_idx, result->start_id);
     const int64_t batch_end =
         std::min(start_atom_idx + atom_cnt, result->end_id);
+
+    DBG_LOG1(DEBUG_FIG,
+             "compute_intersection() called: batch_start=%" PRId64 " "
+             "batch_end=%" PRId64,
+             batch_start, batch_end);
 
     // Find the starting item ID.
     //  * rel_item_id = (item_id - start_item_id)
