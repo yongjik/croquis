@@ -102,13 +102,16 @@ class DisplayObj(object):
       <!-- The height of cr_y_axis must be manually adjusted to match (canvas
            height) + (width of x axis line).  -->
       <div class="cr_y_axis"></div>
-      <div class="cr_canvas_plus_x_axis">
-        <div class="cr_canvas">
-          <div class="cr_progressbar">Please wait, the graph is being generated ...</div>
-          <div class="cr_inner"></div>
-          <div class="cr_foreground"></div>
-          <div class="cr_grid"></div>
-          <div class="cr_select_area"></div>
+      <!-- I don't know why, but Chrome *sometimes* enables dragging the whole
+           canvas after interaction... I should probably add draggable="false"
+           everywhere to be sure... -->
+      <div class="cr_canvas_plus_x_axis" draggable="false">
+        <div class="cr_canvas" draggable="false">
+          <div class="cr_progressbar" draggable="false">Please wait, the graph is being generated ...</div>
+          <div class="cr_inner" draggable="false"></div>
+          <div class="cr_foreground" draggable="false"></div>
+          <div class="cr_grid" draggable="false"></div>
+          <div class="cr_select_area" draggable="false"></div>
         </div>
         <div class="cr_x_axis"></div>
         <!-- cr_tooltip cannot be inside cr_canvas because cr_canvas has
