@@ -302,7 +302,6 @@ ThrManager::ThrManager(int nthreads, PyCallback_t py_callback,
 void ThrManager::wthr_entry_point(int idx)
 {
     DBG_LOG1(DEBUG_TMGR, "%p : wthr_entry_point #%d", this, idx);
-    CHECK(idx == wthrs_.size());
     CHECK(idx < nthreads);
     CHECK(std::this_thread::get_id() != mgr_tid_);
 
