@@ -31,8 +31,6 @@ class DisplayObj(object):
         'debug': False,
         'reload_fe': False,  # Force reload frontend js, for debugging.
 
-        '_reopen_comm': False,
-
         # Where to find our js module: see env_helper.py and setup.py.
         '_js_module_name':
             'croquis_fe_dev' if env_helper.is_dev()
@@ -52,26 +50,19 @@ class DisplayObj(object):
             self.config[key] = kwargs.pop(key, default_val)
         assert not kwargs, 'Unknown options: ' + str(kwargs)
 
-        # If this function is called the first time (since last kernel restart),
-        # tell FE to re-open the communication channel.  Note that FE may have
-        # started earlier and may be holding a reference to a stale channel
-        # (from the previous kernel).
-        #
-        # For details about communication channels, see comm.py.
-        global comm_reopened
-        if not comm_reopened:
-            self.config['_reopen_comm'] = True
-            comm_reopened = True
-
-            # In dev environment, always force reload frontend after kernel
-            # restart.
-            if env_helper.is_dev():
-                self.config['reload_fe'] = True
-
     def register_handler(self, msgtype, callback):
         comm.comm_manager.register_handler(self.canvas_id, msgtype, callback)
 
     def show(self):
+        # In dev environment, always force reload frontend after kernel restart.
+        global comm_reopened
+        if not comm_reopened:
+            comm_reopened = True
+            if env_helper.is_dev():
+                self.config['reload_fe'] = True
+
+        self.config['BE_uuid'] = comm.BE_uuid
+
         # NOTE: Please keep this in sync with comments on Ctxt (croquis_fe.js).
         html = jinja2.Template('''
 <div class="croquis_nbext">
@@ -161,8 +152,7 @@ class DisplayObj(object):
     requirejs(['base/js/utils'], function(utils) {
         utils.load_extension('{{_js_module_name}}').then((croquis) => {
             console.log('croquis_fe module object is: ', croquis)
-            croquis.init({{'true' if reload_fe else 'false'}},
-                         {{'true' if _reopen_comm else 'false'}});
+            croquis.init({{'true' if reload_fe else 'false'}}, '{{BE_uuid}}');
             ctxt = new croquis.Ctxt('{{canvas_id}}');
             console.log('croquis_fe: created ctxt object: ', ctxt);
         }).catch((err) => {

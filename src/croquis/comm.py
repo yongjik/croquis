@@ -3,9 +3,13 @@
 
 import collections
 import logging
+import uuid
 import weakref
 
 logger = logging.getLogger(__name__)
+
+# Create a unique UUID so that FE can find out when BE restarts.
+BE_uuid = str(uuid.uuid4())
 
 class CommManager(object):
     def __init__(self):

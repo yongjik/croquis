@@ -20,7 +20,14 @@ const ZOOM_FACTOR = 1.5;  // Must match constants.h.
 
 let css_loaded = null;  // Promise object.
 let comm = null;  // Websocket communication channel provided by Jupyter.
-let comm_ready = false;  // TODO: Do we need this?
+let comm_ready_resolve = null;
+let comm_ready = new Promise((resolve, reject) => {
+    comm_ready_resolve = resolve;  // Will be called when BE is ready.
+});
+
+// Copied from `BE_uuid` of comm.py: used to detect BE restart.
+let last_BE_uuid = null;
+
 let ctxt_map = {};  // Map of contexts by canvas IDs.
 
 let sqr = (x) => x * x;
@@ -65,11 +72,14 @@ function load_ipython_extension() {
 // development we want to be able to reload this module (triggered by Python
 // class `DisplayObj` via calling `require.undef`), but Jupyter only calls
 // load_ipython_extension() for the very first invocation.
-function init(force_reload, reopen_comm) {
-    console.log('croquis_fe.init() called: ' +
-                `force_reload=${force_reload} reopen_comm=${reopen_comm}`);
+function init(force_reload, BE_uuid) {
+    console.log(`${get_timestamp_str()} croquis_fe.init() called: ` +
+                `force_reload=${force_reload} BE_uuid=${BE_uuid}`);
+    // console.log('comm = ', comm);
     load_css(force_reload);
-    if (reopen_comm) {
+    if (BE_uuid != last_BE_uuid) {
+        console.log(`${get_timestamp_str()} BE_uuid changed from ` +
+                    `${last_BE_uuid} to ${BE_uuid}: re-opening comm ...`);
         // See: https://jupyter-notebook.readthedocs.io/en/stable/comms.html
         comm = Jupyter.notebook.kernel.comm_manager.new_comm(
             'croquis', {'msg': 'FE_loaded'})
@@ -126,11 +136,12 @@ function msg_dispatcher(msg) {
     // console.log('Received comm: ', msg);
     let data = msg.content.data;
 
-    // TODO: I don't think BE_ready message serves any purpose.  Maybe
-    // remove it?
     if (data.msg == 'BE_ready') {
         console.log('Backend is ready!');
-        comm_ready = true;
+        if (comm_ready_resolve != null) {
+            comm_ready_resolve();
+            comm_ready_resolve = null;
+        }
         return;
     }
 
@@ -2539,7 +2550,11 @@ class Ctxt {
         let data = more_data || {};
         data.msg = msg;
         data.canvas_id = this.canvas_id;
-        comm.send(data);
+        // console.log(`${get_timestamp_str()} sending msg: `, msg, more_data);
+        comm_ready.then(() => {
+            // console.log(`${get_timestamp_str()} actually sending msg: `, JSON.stringify(data));
+            comm.send(data)
+        });
     }
 
     // Handler for BE message.
