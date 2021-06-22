@@ -5,6 +5,7 @@ import logging
 
 import numpy as np
 
+from . import color_util
 from .buf_util import ensure_buffer
 
 logger = logging.getLogger(__name__)
@@ -79,12 +80,14 @@ class FigData(object):
         parent.add_labels(labels)
 
 class RectangularLineData(FigData):
-    def __init__(self, parent, X, Y, colors, copy_data=True, **kwargs):
+    def __init__(self, parent, X, Y, colors=None, **kwargs):
         super().__init__(parent)
 
+        copy_data = kwargs.pop('copy_data', True)
         self.X = ensure_buffer(X, copy_data=copy_data)
         self.Y = ensure_buffer(Y, copy_data=copy_data)
-        self.colors = ensure_buffer(colors, copy_data=copy_data)
+        if colors is not None:
+            self.colors = ensure_buffer(colors, copy_data=copy_data)
 
         # `lines`: number of lines (= items).
         # `pts`: number of points per line.
@@ -93,11 +96,18 @@ class RectangularLineData(FigData):
         self.dims = collections.defaultdict(dict)
         self._get_dims('X', self.X, ('lines', 'pts'))
         self._get_dims('Y', self.Y, ('lines', 'pts'))
-        self._get_dims('colors', self.colors, ('lines', 'rgb'))
+        if colors is not None:
+            self._get_dims('colors', self.colors, ('lines', 'rgb'))
 
         self.item_cnt = self._verify_dims('lines', 1)
         self.pts_cnt = self._verify_dims('pts')
-        self._verify_dims('rgb', must=3)
+
+        if colors is not None:
+            self._verify_dims('rgb', must=3)
+        else:
+            self.colors = ensure_buffer(
+                color_util.default_colors(self.start_item_id, self.item_cnt))
+            # print(self.colors.shape)
 
         self._verify_labels(parent, kwargs)
 
@@ -110,14 +120,16 @@ class RectangularLineData(FigData):
             self.marker_size, self.line_width, self.highlight_line_width)
 
 class FreeformLineData(FigData):
-    def __init__(self, parent, X, Y, colors, copy_data=True, **kwargs):
+    def __init__(self, parent, X, Y, colors=None, **kwargs):
         super().__init__(parent)
 
+        copy_data = kwargs.pop('copy_data', True)
         self.X = ensure_buffer(X, copy_data=copy_data)
         self.Y = ensure_buffer(Y, copy_data=copy_data)
         self.start_idxs = ensure_buffer(
             kwargs.pop('start_idxs'), copy_data=copy_data)
-        self.colors = ensure_buffer(colors, copy_data=copy_data)
+        if colors is not None:
+            self.colors = ensure_buffer(colors, copy_data=copy_data)
 
         # `lines`: number of lines (= items).
         # `pts`: number of *all* the points.
@@ -127,11 +139,17 @@ class FreeformLineData(FigData):
         self._get_dims('X', self.X, ('pts',))
         self._get_dims('Y', self.Y, ('pts',))
         self._get_dims('start_idxs', self.start_idxs, ('lines',))
-        self._get_dims('colors', self.colors, ('lines', 'rgb'))
+        if colors is not None:
+            self._get_dims('colors', self.colors, ('lines', 'rgb'))
 
         self.item_cnt = self._verify_dims('lines', 1)
         self.total_pts_cnt = self._verify_dims('pts')
-        self._verify_dims('rgb', must=3)
+
+        if colors is not None:
+            self._verify_dims('rgb', must=3)
+        else:
+            self.colors = ensure_buffer(
+                color_util.default_colors(self.start_item_id, self.item_cnt))
 
         self._verify_labels(parent, kwargs)
 
