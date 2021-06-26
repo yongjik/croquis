@@ -116,7 +116,7 @@ class FigData(object):
                 raise ValueError(
                     '`labels` must have same number of labels as items: '
                     f'`labels` has {len(labels)} items, while X & Y has '
-                    f'`self.item_cnt` lines.')
+                    f'{self.item_cnt} lines.')
         else:
             labels = [f'Line #{self.start_item_id + x}'
                       for x in range(self.item_cnt)]
