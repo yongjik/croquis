@@ -163,6 +163,21 @@
     border-top: 1px dashed rgba(0, 45, 209, 0.5);
 }
 
+/* "Crosshair" for the nearest point. */
+.croquis_nbext .cr_grid .nearest_x {
+    position: absolute;
+    width: 1px;
+    height: 100%;
+    border-left: 1px dashed rgba(196, 0, 95, 0.8);
+}
+
+.croquis_nbext .cr_grid .nearest_y {
+    position: absolute;
+    width: 100%;
+    height: 1px;
+    border-top: 1px dashed rgba(196, 0, 95, 0.8);
+}
+
 /* Used for select-to-zoom. */
 .croquis_nbext .cr_select_area {
     visibility: hidden;  /* Hidden by default. */
@@ -186,6 +201,7 @@
 
     max-width: 200px;
     width: fit-content;
+    white-space: pre-wrap;
 }
 
 .croquis_nbext .cr_progressbar {

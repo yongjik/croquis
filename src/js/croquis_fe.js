@@ -906,6 +906,50 @@ class TileSet {
     }
 }
 
+
+// Coordinates of nearest points to show inside the tooltip.
+//
+// This "cache" is intentially small because we are going to request the nearest
+// point every time the mouse stopped anyway.
+class NearestPts {
+    constructor() {
+        this.cache = new LRUCache(10, () => true);
+    }
+
+    // config_id/zoom_level/x_offset/y_offset: describes the
+    // current canvas configuration.
+    //
+    // mouse_x, mouse_y: the current mouse cursor position (relative to the top
+    // left corner of the canvas)
+    //
+    // item_id: duh
+    //
+    // pt_x, pt_y: the nearest point (data coordinate)
+    //
+    // Everything except for pt_x/pt_y is part of the key - we need so much
+    // information because the "nearest point" depends on what's currently
+    // visible on the canvas.
+    insert(msg_dict) {
+        const keys = ['config_id', 'zoom_level', 'x_offset', 'y_offset',
+                      'mouse_x', 'mouse_y', 'item_id'];
+        const key = keys.map((k) => msg_dict[k]).join(':');
+        const data = {
+            data_x: msg_dict.data_x,
+            data_y: msg_dict.data_y,
+            screen_x: msg_dict.screen_x,
+            screen_y: msg_dict.screen_y,
+        };
+        this.cache.insert(key, data);
+    }
+
+    get(config_id, zoom_level, x_offset, y_offset, mouse_x, mouse_y, item_id) {
+        const key = [
+            config_id, zoom_level, x_offset, y_offset, mouse_x, mouse_y, item_id
+        ].map(Math.round).join(':');
+        return this.cache.get(key);
+    }
+}
+
 // Helper class used by AxisHandler.
 class AxisTick {
     // `coord`: in pixels.
@@ -927,10 +971,10 @@ class AxisTick {
 
         // Add the new tick, label, and grid line.
         this.tick = document.createElement('div');
-        this.tick.classList.add(`cr_tick`);
+        this.tick.classList.add('cr_tick');
 
         this.label = document.createElement('div');
-        this.label.classList.add(`cr_label`);
+        this.label.classList.add('cr_label');
         this.label.textContent = label_str;
 
         this.line = document.createElement('div');
@@ -1079,6 +1123,26 @@ class AxisHandler {
             }
         }
     }
+
+    // Helper function for the crosshair ("nearest point").
+    update_crosshair(x, y) {
+        if (x == null) {
+            for (let hair of
+                 this.grid.querySelectorAll('.nearest_x, .nearest_y'))
+                hair.remove();
+            return;
+        }
+
+        let x_hair = document.createElement('div');
+        x_hair.classList.add('nearest_x');
+        x_hair.style.left = x + 'px';
+        this.grid.appendChild(x_hair);
+
+        let y_hair = document.createElement('div');
+        y_hair.classList.add('nearest_y');
+        y_hair.style.top = y + 'px';
+        this.grid.appendChild(y_hair);
+    }
 }
 
 const MOUSE_STOP_THRESHOLD_MSEC = 30.0;
@@ -1159,7 +1223,7 @@ class CanvasMouseHandler {
             this.clear_mouse_stop_cb();
             this.clear_select_area();
             this.parent.clear_highlight();
-            this.parent.tooltip.style.visibility = 'hidden';
+            this.parent.hide_tooltip();
 
             return;
         }
@@ -1192,6 +1256,7 @@ class CanvasMouseHandler {
         // Handle mouse button down transition.
         if (evname == 'mousedown' && !btn_was_pressed && btn_is_pressed) {
             this.parent.clear_highlight();
+            this.parent.hide_tooltip();
             this.start_x = x;
             this.start_y = y;
 
@@ -1371,6 +1436,7 @@ class TileHandler {
         this.mouse_handler =
             new CanvasMouseHandler(this, this.replayer, this.canvas);
         this.tooltip = qs('.cr_tooltip');
+        this.nearest_pts = new NearestPts();
 
         // TODO: Support replay?
         this.searchbox = qs('.cr_searchbox input');
@@ -1643,6 +1709,7 @@ class TileHandler {
         this.replayer.log(`handle_mouse_stop: ${x} ${y}`);
         let item_id = this.tile_set.get_highlight_id(x, y);
         if (item_id == 'unknown') return;
+        this.replayer.log('current item_id = ', item_id);
 
         let buf = [{x : x, y: y, item_id: item_id}];
         const req = this.create_highlight_req(buf);
@@ -2054,20 +2121,51 @@ class TileHandler {
         }
 
         // Enable tooltip if the mouse is stopped.
+        this.hide_tooltip();
         if (this.mouse_handler.move == 'stopped' && best_item_id != null) {
+            this.replayer.log(
+                `Activating tooltip for item #${best_item_id} ...`);
+
             this.tooltip.style.visibility = 'visible';
-            this.tooltip.style.top =
-                (this.mouse_handler.mouse_y + TOOLTIP_OFFSET_Y) + 'px';
-            this.tooltip.style.left =
-                (this.mouse_handler.mouse_x + TOOLTIP_OFFSET_X) + 'px';
+            this.tooltip.style.top = (y + TOOLTIP_OFFSET_Y) + 'px';
+            this.tooltip.style.left = (x + TOOLTIP_OFFSET_X) + 'px';
             const color = best_tile.style.split(':')[0];
             this.tooltip.style.borderColor = '#' + color;
 
-            this.tooltip.textContent = best_tile.label;
+            let nearest_pt = this.nearest_pts.get(
+                this.tile_set.config_id, this.tile_set.zoom_level,
+                this.tile_set.x_offset, this.tile_set.y_offset,
+                x, y, best_item_id);
+
+            if (nearest_pt == null) {
+                // Ask information about the nearest point.
+                this.tooltip.textContent = best_tile.label;
+
+                this.ctxt.send('pt_req', {
+                    config_id: this.tile_set.config_id,
+                    zoom_level: this.tile_set.zoom_level,
+                    x_offset: Math.round(this.tile_set.x_offset),
+                    y_offset: Math.round(this.tile_set.y_offset),
+                    mouse_x: ix,
+                    mouse_y: iy,
+                    item_id: best_item_id,
+                });
+
+                return;
+            }
+
+            // This works due to "white-space: pre-wrap" in CSS.
+            this.tooltip.textContent =
+                best_tile.label + '\r\n' +
+                `(${nearest_pt.data_x}, ${nearest_pt.data_y})`;
+            this.axis_handler.update_crosshair(
+                nearest_pt.screen_x, nearest_pt.screen_y);
         }
-        else {
-            this.tooltip.style.visibility = 'hidden';
-        }
+    }
+
+    hide_tooltip() {
+        this.tooltip.style.visibility = 'hidden';
+        this.axis_handler.update_crosshair(null, null);
     }
 
     // Enable highlight layer with the given item.
@@ -2594,6 +2692,10 @@ class Ctxt {
             let seqs = msg_dict.seqs.split(':').map(x => parseInt(x));
             // console.log(`Received tile: ${tile.key}`);
             this.tile_handler.register_tile(tile, seqs);
+        }
+        else if (msg_dict.msg == 'pt') {
+            this.tile_handler.nearest_pts.insert(msg_dict);
+            this.tile_handler.recompute_highlight();
         }
         else if (msg_dict.msg == 'labels') {
             this.tile_handler.update_search_result(msg_dict);

@@ -200,6 +200,49 @@ tile (BE):
         style: "ff0000:3:5",
     }
 
+pt_req (FE):
+    # Request information about the nearest point currently visible in the
+    # canvas.
+
+    {
+        config_id: 123,
+        zoom_level: 0,
+
+        # Same as `axis_req`.
+        x_offset: 10,
+        y_offset: 3,
+
+        # Mouse cursor position in pixel coordinate, measured from the current
+        # visible top left corner.  (I.e., if x_offset = mouse_x = 0, it points
+        # to the same location as in x_offset = mouse_x = 100.)
+        mouse_x: 123,
+        mouse_y: 45,
+
+        item_id: 123,
+    }
+
+pt (BE):
+    # Nearest point and its coordinate.
+
+    {
+        # Echoes back the arguments from `pt_req`.
+        config_id: 123,
+        zoom_level: 0,
+        x_offset: 10,
+        y_offset: 3,
+        mouse_x: 123,
+        mouse_y: 45,
+        item_id: 123,
+
+        # Nearest point: data coordinate in string.
+        data_x: "2021-06-22 22:00:00"
+        data_y: "34.56"
+
+        # Nearest point: screen coordinate.
+        screen_x: 125,
+        screen_y: 41,
+    }
+
 search (FE):
     {
         pat: pattern,

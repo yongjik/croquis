@@ -67,6 +67,7 @@ class Plotter(object):
         self.disp.register_handler('zoom_req', self._zoom_req_handler)
         self.disp.register_handler('axis_req', self._axis_req_handler)
         self.disp.register_handler('tile_req', self._tile_req_handler)
+        self.disp.register_handler('pt_req', self._pt_req_handler)
         self.disp.register_handler('search', self._search_handler)
         self.disp.register_handler('update_selection',
                                    self._update_selection_handler)
@@ -99,8 +100,7 @@ class Plotter(object):
             if is_transparent:
                 item_id = json_data['item_id']
                 json_data['label'] = self.labels[item_id]
-                style, = self._concat_over_fd(
-                    [item_id], lambda fd, ids: fd.get_label_styles(ids))
+                style, = self._get_figdata(item_id).get_label_styles([item_id])
                 json_data['style'] = style
 
             # For debugging.
@@ -202,6 +202,28 @@ class Plotter(object):
                     continue
 
             self._tile_req_helper(msgdata, item)
+
+    # Find the point nearest to the given screen coordinate.
+    def _pt_req_handler(self, canvas_id, msgtype, msg):
+        msgdata = msg['content']['data']
+        config_id = msgdata['config_id']
+        item_id = msgdata['item_id']
+
+        canvas_config = self._C.get_canvas_config(config_id)
+        resp = self._get_figdata(item_id).get_nearest_pt(
+            self,
+            canvas_config, msgdata['zoom_level'],
+            msgdata['x_offset'], msgdata['y_offset'],
+            msgdata['mouse_x'], msgdata['mouse_y'],
+            item_id)
+        if resp is None: return
+
+        # Echo back the request parameters.
+        for key in ('config_id zoom_level x_offset y_offset '
+                    'mouse_x mouse_y item_id').split():
+            resp[key] = msgdata[key]
+
+        comm.comm_manager.send(self.disp.canvas_id, 'pt', **resp)
 
     def _search_handler(self, canvas_id, msgtype, msg):
         msgdata = msg['content']['data']
@@ -336,6 +358,15 @@ class Plotter(object):
         self._C.tile_req_handler(
             msg['config_id'], msg['zoom_level'],
             item.get('id', -1), _flatten(item['prio']), _flatten(item['reg']))
+
+    # Helper function for finding a FigData that contains the given item.
+    def _get_figdata(self, item_id):
+        for fd in self.fig_data_list:
+            start_item_id = fd.start_item_id
+            end_item_id = start_item_id + fd.item_cnt
+            if start_item_id <= item_id < end_item_id: return fd
+
+        assert None, f'Invalid item_id {item_id}'
 
     # Helper function for calling a function on a bunch of FigData objects.
     # `item_ids` must be sorted.

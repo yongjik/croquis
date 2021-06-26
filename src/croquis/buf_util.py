@@ -9,6 +9,9 @@ import numpy as np
 #
 # If a list is given, convert to numpy array first, using `dtype`.  Otherwise,
 # `dtype` is unused.
+#
+# TODO: I'm not sure if using memoryview is useful.  Since we need numpy anyway,
+#       maybe we should just move everything to numpy arrays?
 def ensure_buffer(data, dtype=None, copy_data=True):
     # Sanity check.
     if isinstance(data, types.GeneratorType):

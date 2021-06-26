@@ -1,6 +1,7 @@
 # A "figure data" chunk that was added by a single Plotter.add() function.
 
 import collections
+import datetime
 import logging
 
 import numpy as np
@@ -32,6 +33,48 @@ class FigData(object):
 
         colors = ['%02x%02x%02x' % tuple(row) for row in colors]
         return [f'{c}:{self.marker_size}:{self.line_width}' for c in colors]
+
+    # Get the coordinate of the nearest point currently visible on the canvas.
+    def get_nearest_pt(self, parent,
+                       canvas_config, zoom_level, x_offset, y_offset,
+                       mouse_x, mouse_y, item_id):
+        c = canvas_config
+        X, Y = self.get_pts(item_id)
+
+        # Compute pixel coordinates: see the comments for CanvasConfig.
+        Z = np.power(1.5, zoom_level)
+        px = (c.w - 1) * (Z * (X - (c.x0 + c.x1) / 2) / (c.x1 - c.x0) + 0.5)
+        py = (c.h - 1) * (Z * (Y - (c.y0 + c.y1) / 2) / (c.y0 - c.y1) + 0.5)
+
+        dist2 = (mouse_x - x_offset - px) ** 2 + (mouse_y - y_offset - py) ** 2
+        ipx = np.rint(px).astype(np.int) + x_offset
+        ipy = np.rint(py).astype(np.int) + y_offset
+        in_canvas, = np.where(
+            (0 <= ipx) & (ipx < c.w) & (0 <= ipy) & (ipy < c.h))
+        if len(in_canvas) == 0: return None  # No data!
+
+        best_idx = in_canvas[np.argmin(dist2[in_canvas])]
+        screen_x = ipx[best_idx]
+        screen_y = ipy[best_idx]
+        data_x = X[best_idx]
+
+        # TODO: Find a better way to represent the coordinate as string!
+        # TODO: Refactore datetime-related functions into a separate module?
+        def _data_coord(axis, val):
+            axis_type = parent.axis_config[axis]
+            if axis_type == 'linear':
+                return '%8g' % val
+            elif axis_type == 'timestamp':
+                return str(datetime.datetime.fromtimestamp(val))
+            else:
+                assert None, f'Unsupported axis type {axis_type}'
+
+        return {
+            'screen_x': int(ipx[best_idx]),
+            'screen_y': int(ipy[best_idx]),
+            'data_x': _data_coord('x', X[best_idx]),
+            'data_y': _data_coord('y', Y[best_idx]),
+        }
 
     def _get_dims(self, name, data, dim_names, min_dims=1):
         assert type(dim_names) == tuple
@@ -119,6 +162,12 @@ class RectangularLineData(FigData):
             self.X, self.Y, self.colors, self.item_cnt, self.pts_cnt,
             self.marker_size, self.line_width, self.highlight_line_width)
 
+    def get_pts(self, item_id):
+        X = np.asarray(self.X)
+        Y = np.asarray(self.Y)
+        return (X if X.ndim == 1 else X[item_id - self.start_item_id],
+                Y if Y.ndim == 1 else Y[item_id - self.start_item_id])
+
 class FreeformLineData(FigData):
     def __init__(self, parent, X, Y, colors=None, **kwargs):
         super().__init__(parent)
@@ -161,6 +210,15 @@ class FreeformLineData(FigData):
             self.X, self.Y, self.start_idxs, self.colors,
             self.item_cnt, self.total_pts_cnt,
             self.marker_size, self.line_width, self.highlight_line_width)
+
+    def get_pts(self, item_id):
+        offset = item_id - self.start_item_id
+        X = np.asarray(self.X)
+        Y = np.asarray(self.Y)
+        start_idx = self.start_idxs[offset]
+        end_idx = self.start_idxs[offset + 1] if offset < self.item_cnt - 1 \
+                                              else self.total_pts_cnt
+        return X[start_idx:end_idx], Y[start_idx:end_idx]
 
 # Create a figure of the appropriate class.
 # TODO: Support other types!
