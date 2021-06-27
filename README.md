@@ -8,7 +8,7 @@ As an example, here's hourly ground temperature data of 2020 from the world's
 weather stations, downloaded from [NOAA website](https://www.ncdc.noaa.gov/isd/data-access).
 The data set contains 127 million points.
 
-XXX video should be here XXX
+https://user-images.githubusercontent.com/31876421/123535161-0b402d00-d6d7-11eb-9486-6218279eda9d.mp4
 
 The word "croquis" means [a quick, sketchy drawing](https://en.wikipedia.org/wiki/Croquis) -
 it's from French *croquis* which simply means "sketch."  (The final -s is
