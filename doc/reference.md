@@ -65,7 +65,7 @@ Y = np.sin(freqs * X)  # matrix of size 100 x 200
 fig.add(X, Y)
 ```
 
-* `color` (optional)
+* `colors` (optional)
 
   If specified, must have dimension `(M, 3)`, where `M` is the number of lines.
   Can be either integer (range [0, 255]), or float (range [0.0, 1.0]).

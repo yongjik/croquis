@@ -116,7 +116,7 @@ file](ex5.csv) contains three columns: `x`, `y1`, and `y2`.
 ```
 import pandas as pd
 
-df = pandas.read_csv('ex5.csv')
+df = pd.read_csv('ex5.csv')
 fig = croquis.plot()
 fig.add(df.x, df.y1, label='y1', line_width=0, marker_size=15)
 fig.add(df.x, df.y2, label='y2', line_width=3, marker_size=10)
