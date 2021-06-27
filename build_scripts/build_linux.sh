@@ -74,7 +74,7 @@ else
     # cp ../dist/croquis-$pkg_version-*.whl /mnt/bind/
 
     # Add manylinux tags to the package.
-    auditwheel addtag ../dist/croquis-$pkg_version-*.whl
+    auditwheel repair ../dist/croquis-$pkg_version-*.whl
     cp wheelhouse/croquis-$pkg_version-*.whl /mnt/bind/
 
     exit 0
