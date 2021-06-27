@@ -112,6 +112,7 @@ class FigData(object):
             labels = [kwargs.pop('label')]
         elif 'labels' in kwargs:
             labels = kwargs.pop('labels')
+            if type(labels) == str: labels = [labels]
             if self.item_cnt != len(labels):
                 raise ValueError(
                     '`labels` must have same number of labels as items: '
