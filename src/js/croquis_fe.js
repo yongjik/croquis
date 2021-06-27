@@ -80,6 +80,7 @@ function init(force_reload, BE_uuid) {
     if (BE_uuid != last_BE_uuid) {
         console.log(`${get_timestamp_str()} BE_uuid changed from ` +
                     `${last_BE_uuid} to ${BE_uuid}: re-opening comm ...`);
+        last_BE_uuid = BE_uuid;
         // See: https://jupyter-notebook.readthedocs.io/en/stable/comms.html
         comm = Jupyter.notebook.kernel.comm_manager.new_comm(
             'croquis', {'msg': 'FE_loaded'})

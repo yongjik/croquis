@@ -62,6 +62,8 @@ class Plotter(object):
         sm = self._C.init_selection_map()
         self.selection_map = np.frombuffer(sm, dtype=bool)
 
+        comm.comm_manager.register_plot(self.disp.canvas_id, self)
+
         self.disp.register_handler('resize', self._resize_handler)
         self.disp.register_handler('cell_fini', self._cell_fini_handler)
         self.disp.register_handler('zoom_req', self._zoom_req_handler)

@@ -16,6 +16,8 @@ class CommManager(object):
         self.is_open = False
         self.comm = None
 
+        self.plots = {}
+
         # handlers[canvas_id][msgtype] = weakref.WeakMethod(callback)
         self.handlers = collections.defaultdict(dict)
 
@@ -27,6 +29,12 @@ class CommManager(object):
         get_ipython().kernel.comm_manager.register_target(
             'croquis', self._open_handler)
         self.is_open = True
+
+    # Register a Plotter object so that it's not garbage-collected when the user
+    # loses the reference to it - which is quite common because people will just
+    # reuse the variable `fig` in different cells.
+    def register_plot(self, canvas_id, plot):
+        self.plots[canvas_id] = plot
 
     # Register a handler for message received from FE.  The callback is called
     # with `canvas_id`, `msgtype`, and json contents of the message.
@@ -48,6 +56,7 @@ class CommManager(object):
     def deregister_handler(self, canvas_id, msgtype=None):
         if msgtype is None:
             del self.handlers[canvas_id]
+            del self.plots[canvas_id]
         else:
             del self.handlers[canvas_id][msgtype]
 
