@@ -27,6 +27,11 @@ def ensure_buffer(data, dtype=None, copy_data=True):
         #
         # cf. https://docs.python.org/3/c-api/buffer.html
         data = np.array(data, copy=copy_data, dtype=dtype)
+
+        # Convert numpy datetime to unix timestamp.
+        if np.issubdtype(data.dtype, np.datetime64):
+            data = (data - np.datetime64(0, 's')) / np.timedelta64(1, 's')
+
         return memoryview(data)
 
     if copy_data:
