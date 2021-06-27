@@ -82,6 +82,7 @@ new_canvas_config (BE):
 axis_req (FE):
     {
         config_id: 123,  # Config ID
+        zoom_level: 0,  # Current zoom level.
 
         # Sequence number for this message so that FE can know which reply
         # corresponds to the latest request.

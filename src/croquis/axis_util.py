@@ -5,6 +5,8 @@ import logging
 import math
 import time
 
+import numpy as np
+
 logger = logging.getLogger(__name__)
 
 # Best/minimum distance between ticks (in pixels).
@@ -20,12 +22,21 @@ class TickBuilder(object):
     # `offset` is how much canvas was panned in the direction.  E.g., if (width
     # == 500 and offset == 100), then the canvas was moved 100 pixels to the
     # right, so we need ticks in range [-100, 399].
-    def __init__(self, axis, x0, x1, width, offset):
+    def __init__(self, axis, x0, x1, width, zoom_level, offset):
         self.axis = axis
-        self.x0 = min(x0, x1)
-        self.x1 = max(x0, x1)
         self.width = width
         self.offset = offset
+
+        # Let's just apply zoom_level to modify x0 & x1 so that we don't have to
+        # worry about it in the rest of the code.
+        #
+        # TODO: This same logic is appearing everywhere in slightly different
+        #       form - we should do something about it.
+        Z = np.power(1.5, zoom_level)
+        x0, x1 = min(x0, x1), max(x0, x1)
+        self.x0 = (x0 + x1) / 2 - (x1 - x0) / (2 * Z)
+        self.x1 = (x0 + x1) / 2 + (x1 - x0) / (2 * Z)
+
         if self.axis == 'x':
             self.data_offset = (self.x1 - self.x0) / width * offset
         else:
@@ -335,7 +346,7 @@ def _create_tick_builder(axis_type, *args):
         assert None, f'Unsupported axis type {axis_type}'
 
 # Create label data given the canvas config.
-def create_labels(data, canvas_config, axis_config):
+def create_labels(data, canvas_config, zoom_level, axis_config):
     x_offset = round(data.get('x_offset', 0))
     y_offset = round(data.get('y_offset', 0))
 
@@ -343,12 +354,12 @@ def create_labels(data, canvas_config, axis_config):
         'x': _create_tick_builder(
                  axis_config['x'], 'x',
                  canvas_config.x0, canvas_config.x1,
-                 canvas_config.w, x_offset
+                 canvas_config.w, zoom_level, x_offset
              ).run(),
         'y': _create_tick_builder(
                  axis_config['y'], 'y',
                  canvas_config.y0, canvas_config.y1,
-                 canvas_config.h, y_offset
+                 canvas_config.h, zoom_level, y_offset
              ).run(),
     }
 

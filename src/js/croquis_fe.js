@@ -1080,18 +1080,23 @@ class AxisHandler {
     }
 
     // Update ticks based on new location.
-    update_location() {
+    update_location(zoom_udpated) {
         for (let tick of this.ticks) tick.update_location();
 
-        // Check if we have drifted far enough to need new labels.
         let tile_set = this.tile_handler.tile_set;
-        let dist2 = sqr(tile_set.x_offset - this.last_x_offset) +
-                    sqr(tile_set.y_offset - this.last_y_offset);
-        if (dist2 < sqr(REQUEST_NEW_LABELS_DIST_THRESHOLD)) return;
+
+        if (!zoom_udpated) {
+            // Check if we have drifted far enough to need new labels.
+            let dist2 = sqr(tile_set.x_offset - this.last_x_offset) +
+                        sqr(tile_set.y_offset - this.last_y_offset);
+            if (dist2 < sqr(REQUEST_NEW_LABELS_DIST_THRESHOLD)) return;
+        }
 
         this.tile_handler.replayer.log('Creating new axis_req message ...');
 
         if (this.inflight_reqs.size >= 2) {
+            // TODO: If `zoom_updated` is true, we still need to send the
+            //       request!
             this.tile_handler.replayer.log(
                 'Too many in-flight axis requests, bailing out ...');
             return;
@@ -1101,6 +1106,7 @@ class AxisHandler {
         this.inflight_reqs.set(seq, Date.now());
         const req = {
             config_id: tile_set.config_id,
+            zoom_level: tile_set.zoom_level,
             axis_seq: seq,
             x_offset: Math.round(tile_set.x_offset),
             y_offset: Math.round(tile_set.y_offset),
@@ -1458,6 +1464,7 @@ class TileHandler {
             this.tile_set.x_offset *= ZOOM_FACTOR;
             this.tile_set.y_offset *= ZOOM_FACTOR;
             this.tile_set.refresh();
+            this.axis_handler.update_location(true);
             this.request_new_tiles();
         });
         qs('.cr_zoom_out_btn').addEventListener('click', (ev) => {
@@ -1465,6 +1472,7 @@ class TileHandler {
             this.tile_set.x_offset /= ZOOM_FACTOR;
             this.tile_set.y_offset /= ZOOM_FACTOR;
             this.tile_set.refresh();
+            this.axis_handler.update_location(true);
             this.request_new_tiles();
         });
 
@@ -1701,7 +1709,7 @@ class TileHandler {
         this.request_new_tiles();
 
         // May send axis_req message if necessary.
-        this.axis_handler.update_location();
+        this.axis_handler.update_location(false);
     }
 
     // The mouse cursor is not moving: ask highlight tiles for exactly under the

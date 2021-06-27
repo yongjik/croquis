@@ -15,7 +15,7 @@ from croquis import axis_util
 # TODO: test offset as well !!
 
 def test_linear(axis, x0, x1, width, expected):
-    builder = axis_util._create_tick_builder('linear', axis, x0, x1, width, 0)
+    builder = axis_util._create_tick_builder('linear', axis, x0, x1, width, 0, 0)
     ticks = builder.run()
 
     print(ticks)
@@ -40,7 +40,7 @@ test_linear('y', 12345678, 12345679, 2000, r'1\.234567\d+e\+07')
 def test_timestamp(axis, d0, d1, width, expected):
     _unix_ts = lambda d: time.mktime(time.strptime(d, '%Y%m%d-%H%M%S'))
     builder = axis_util._create_tick_builder(
-        'timestamp', axis, _unix_ts(d0), _unix_ts(d1), width, 0)
+        'timestamp', axis, _unix_ts(d0), _unix_ts(d1), width, 0, 0)
     ticks = builder.run()
 
     print(ticks)

@@ -121,7 +121,7 @@ class Plotter(object):
                 json_data['config_id'], json_data['w'], json_data['h'],
                 float(json_data['x0']), float(json_data['y0']),
                 float(json_data['x1']), float(json_data['y1']))
-            axis_util.create_labels(json_data, canvas_config, self.axis_config)
+            axis_util.create_labels(json_data, canvas_config, 0, self.axis_config)
             logger.debug('Added axis data to message: %s', json_data)
 
         comm.comm_manager.send(
@@ -159,7 +159,8 @@ class Plotter(object):
             'x_offset': msgdata['x_offset'],
             'y_offset': msgdata['y_offset'],
         }
-        axis_util.create_labels(json_data, canvas_config, self.axis_config)
+        axis_util.create_labels(
+            json_data, canvas_config, msgdata['zoom_level'], self.axis_config)
 
         comm.comm_manager.send(
             self.disp.canvas_id, 'axis_ticks', **json_data)
