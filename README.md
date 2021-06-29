@@ -4,6 +4,24 @@ Croquis is a lightweight Python library for drawing interactive graphs *really
 fast* on Jupyter Notebook.  It lets you effortlessly browse and examine much
 larger data than other similar libraries.
 
+![banner](doc/croquis2_1.png)
+
+You might be wondering: there are already many [mature](https://matplotlib.org/)
+and [feature-rich](https://plotly.com/python/) plotting
+[libraries](https://bokeh.org/) — what's the appeal of a new, experimental
+library?  Well, croquis is built with the following goals in mind:
+
+- **Fast:** Croquis contains a multi-threaded C++ plotting engine which
+  automatically parallelizes graph generation, easily handling gigabytes
+  of data.
+- **Simple:** Croquis provides a unified, simple API, regardless of data size.
+  Whether your data contains ten data points or fifty million, you can make the
+  same three function calls (or as many calls as you wish in a loop, if you
+  prefer).  The library will handle the rest.
+- **Interactive:** Since the C++ engine is alive as long as your figure is
+  visible, at any moment you can zoom in, move around, or select a different
+  subset of your data, and the figure will update accordingly.
+
 As an example, here's hourly ground temperature data of 2020 from the world's
 weather stations, downloaded from [NOAA website](https://www.ncdc.noaa.gov/isd/data-access).
 The data set contains 127 million points.
