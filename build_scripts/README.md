@@ -46,3 +46,25 @@ now.)
 ```
 ./build_macos.sh 3.8 PKG38 0.1.0 master
 ```
+
+# Uploading package
+
+Use [twine](https://twine.readthedocs.io/en/latest/) to upload packages to PyPI.
+For testing in the "sandbox" (test.pypi.org), see
+[these instructions at python.org](https://packaging.python.org/tutorials/packaging-projects/#uploading-the-distribution-archives).
+That is:
+
+`twine upload -r testpypi *.whl`
+
+You will probably need to run it on least two machines, once to upload Linux
+packages and again for Mac packages.  PyPI will automatically register them into
+the correct place.  (That is, if you upload "version 0.1.0" three times, PyPI
+will only show one "version 0.1.0", not three different versions.)  To check
+whether all the packages were correctly registered, see
+[https://test.pypi.org/simple/croquis/](https://test.pypi.org/simple/croquis/).
+
+I don't know what happens if you upload the "same" file twice - maybe it will
+overwrite the previous version?
+
+Obviously, remove `-r testpypi` (and be extra careful) when you're ready to
+upload the real thing.

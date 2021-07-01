@@ -76,3 +76,19 @@ tweak operations to (hopefully) make life easier:
 
 * We reload js/css file every time you restart the kernel.
 * Python/C++ code will leave logging on `dbg.log` (under the current directory).
+
+## Packaging
+
+Python packaging is the dark underside of an otherwise great language that
+nobody speaks of in broad daylight.  There's no need for **you** to know
+anything about it, as long as you want to just use croquis (or even modify and
+develop it!) - honestly I'm not sure if *I* understand it correctly.
+
+However, since I had trouble figuring it out, I wrote some
+[helper scripts and notes](build_scripts/README.md), in the hopes that it may be
+useful to future myself, or any other aspiring Pythonista who's thinking of
+building and distributing their own wonderful Python package.
+
+## IDE integration
+
+Here are some [personal notes](doc/vscode.md) for using VS code (work in progress).
