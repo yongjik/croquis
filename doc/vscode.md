@@ -1,9 +1,12 @@
 # Using VS Code
 
-I just started learning ![VS code](https://code.visualstudio.com/), so this is a
+I just started learning [VS code](https://code.visualstudio.com/), so this is a
 compilation of random stuff I found: some of them may be useful.
 
 ## Javascript
+
+Create [jsconfig.json](https://code.visualstudio.com/docs/languages/jsconfig) under
+`src/js` directory.  Default values should be fine.
 
 ## Python
 

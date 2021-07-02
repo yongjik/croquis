@@ -86,7 +86,7 @@ function init(force_reload, BE_uuid) {
             'croquis', {'msg': 'FE_loaded'})
         comm.on_msg(msg_dispatcher);
     }
-};
+}
 
 // Load CSS if necessary.
 // cf. https://jupyter-contrib-nbextensions.readthedocs.io/en/latest/internals.html
@@ -1670,7 +1670,7 @@ class TileHandler {
         for (let tile of tiles) {
             this.replayer.log(`Adding tile: ${tile.key}`);
             this.tile_set.add_tile(tile);
-            has_hover ||= tile.is_hover();
+            has_hover = has_hover || tile.is_hover();
         }
 
         // Remove progress bar (if exists).
@@ -2340,7 +2340,7 @@ class TileHandler {
 
             this.highlighted_label.update_highlight(false);
             this.highlighted_label = null;
-            clear_highlight();
+            this.clear_highlight();
         }
 
         // Scan the list of existing labels (`old_labels`) and the list of new
