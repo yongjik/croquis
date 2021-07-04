@@ -6,6 +6,16 @@ larger data than other similar libraries.
 
 ![banner](doc/croquis2_1.png)
 
+**Install croquis by running:**
+
+```
+pip install croquis
+```
+
+👉 Please look at the [tutorial](doc/tutorial.md) for more example.
+
+---
+
 You might be wondering: there are already many [mature](https://matplotlib.org/)
 and [feature-rich](https://plotly.com/python/) plotting
 [libraries](https://bokeh.org/) — what's the appeal of a new, experimental
@@ -74,7 +84,8 @@ It should generate a plot like this:
 
 ![Gaussian distribution example](./doc/ex1.png)
 
-See below for documentation.
+For documentation, see the [tutorial](doc/tutorial.md) and the (very short)
+[reference](doc/reference.md).
 
 By the way, this library is of course open source (MIT License) and totally free
 to use, but just in case you really liked it for some reason, the author could
@@ -99,11 +110,6 @@ bare minimum** functionality.  In particular:
 If croquis seems useful to you, but some features are missing for your use case,
 then please feel free to file an issue.  (Of course I can't guarantee anything,
 but it will be nice to know that someone's interested.)
-
-## Documentation
-
-See the [tutorial](doc/tutorial.md) and the (very short)
-[reference](doc/reference.md).
 
 ## FAQ
 

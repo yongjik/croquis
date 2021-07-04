@@ -1,5 +1,7 @@
 # Getting started with croquis
 
+> 👉 For API reference, please see [reference.md](reference.md).
+
 Creating a graph involves the following three steps:
 
 1. Create a figure object: `fig = croquis.plot(...)`
@@ -107,6 +109,25 @@ If it is an integer type, the range is `[0, 255]`; for floats, the range is
 
 (Sorry, fixed aspect ratio is not supported yet, so the "circles" appear
 squashed.)
+
+## Scatter plot
+
+Even though croquis doesn't have the concept of a "scatter plot" per se, we can
+generate one by giving it "lines" that are made of single points.  Here's an
+example of a Gaussian distribution.
+
+```
+N = 1000000
+X = np.random.normal(size=(N, 1))
+Y = np.random.normal(size=(N, 1))
+labels=['pt %d' % i for i in range(N)]
+
+fig = croquis.plot()
+fig.add(X, Y, marker_size=3, labels=labels)
+fig.show()
+```
+
+![Gaussian distribution example](ex1.png)
 
 ## Reading data from CSV
 
