@@ -32,7 +32,9 @@ library?  Well, croquis is built with the following goals in mind:
   visible, at any moment you can zoom in, move around, or select a different
   subset of your data, and the figure will update accordingly.
 
-As an example, here's hourly ground temperature data of 2020 from the world's
+As an example,
+[here](https://github.com/yongjik/croquis-extra/tree/master/noaa_temperature_data)'s
+hourly ground temperature data of 2020 from the world's
 weather stations, downloaded from [NOAA website](https://www.ncdc.noaa.gov/isd/data-access).
 The data set contains 127 million points.
 
