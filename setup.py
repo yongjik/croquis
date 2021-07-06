@@ -104,7 +104,9 @@ if __name__ == '__main__':
         python_requires='>=3.6',
         install_requires=[
             'jinja2',
-            'numpy',
+
+            # Minimum version to support np.argsort(kind='stable').
+            'numpy>=1.15.0',
         ],
 
         ext_modules=[csrc],

@@ -104,6 +104,37 @@ start_idxs = [0, 3, 8]
 fig.add(X, Y, start_idxs=start_idxs)
 ```
 
+* `groupby` (optional)
+
+  (Not included in 0.1.0 release.)
+
+  An alternative for `start_idxs`: when given, `X`, `Y`, and `groupby` must be
+  1-D arrays with the same size.  The elements of `groupby` can be of any type,
+  including string.  Each line is made of points that share the same value of
+  `groupby` - lines are arranged in the order of the first occurrence of the
+  point.
+
+  In addition, if `label`/`labels` are not given, the values of `groupby` are
+  also used as labels.
+
+  For example:
+
+```
+# Contains four lines, appearing in this order:
+#   'ICN' (3 points)
+#   'SFO' (1 point)
+#   'GMP' (2 points)
+#   'RDU' (3 points)
+X       = [    0,     1,     2,     3,     4,     5,     6,     7,     8]
+Y       = [   10,    11,    20,    12,    30,    40,    41,    31,    42]
+airport = ['ICN', 'ICN', 'SFO', 'ICN', 'GMP', 'RDU', 'RDU', 'GMP', 'RDU']
+
+fig.add(X, Y, groupby=airport, marker_size=10)
+```
+
+  NOTE: `groupby` internally works by calling `numpy.unique()` and re-arranging
+  the data, so it is less efficient than calling `start_idxs`.
+
 * `labels` (optional)
 
   If given, specifies the name of each line.  Must be a list of strings (or

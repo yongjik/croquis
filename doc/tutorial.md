@@ -172,11 +172,33 @@ example, imagine [your data](ex6.csv) contains the following:
 
 Of course, you can read this data, iterate over unique values of `location`, and
 add lines one by one.  However, croquis also supports plotting multiple lines
-with different lengths, which is more efficient especially when the data is big.
-In order for that, you need to "squash" X and Y so that they are 1-dimensional
-arrays, and then supply another argument `start_idxs` which is the index inside
-X and Y where each new line starts.  See the comments on `start_idxs` in the
-[reference](reference.md) for details.
+with different lengths:
+
+(NOTE: `groupby` is not included in 0.1.0 release.)
+
+```
+df = pd.read_csv('ex6.csv')
+
+fig = croquis.plot(x_axis='timestamp')
+fig.add(pd.to_datetime(df.date), df.sales, groupby=df.location)
+fig.show()
+```
+
+Here, we also use pandas to transform date strings to datetime values.  In order
+to show dates, you have to create the plot object with `x_axis='timestamp'` -
+x coordinates can be given as either `np.datetime64` type or plain numbers (in
+which case it is interpreted as
+[POSIX timestamps](https://en.wikipedia.org/wiki/Unix_time)).
+
+![Irregular CSV example with timestamps](ex6.png)
+
+---
+
+In case the data is really big, there's also a more efficient method, provided
+that the points are already arranged so that points that belong to the same line
+appear in a consecutive chunk: you can supply another argument `start_idxs`,
+which is the index inside X and Y where each new line starts.  See the comments
+on `start_idxs` in the [reference](reference.md) for details.
 
 Creating `start_idxs` from CSV data needs a bit of fiddling:
 
@@ -187,7 +209,7 @@ df = pd.read_csv('ex6.csv')
 df = df.sort_values(['location', 'date'])
 
 # Create start_idxs.
-locations, counts = np.unique(df['location'].to_numpy(), return_counts=True)
+locations, counts = np.unique(df.location.to_numpy(), return_counts=True)
 start_idxs = np.zeros_like(counts)
 start_idxs[1:] = np.cumsum(counts)[:-1]
 
@@ -201,14 +223,6 @@ fig.add(pd.to_datetime(df.date), df.sales, start_idxs=start_idxs,
         labels=locations)
 fig.show()
 ```
-
-Here, we also use pandas to transform date strings to datetime values.  In order
-to show dates, you have to create the plot object with `x_axis='timestamp'` -
-x coordinates can be given as either `np.datetime64` type or plain numbers (in
-which case it is interpreted as
-[POSIX timestamps](https://en.wikipedia.org/wiki/Unix_time)).
-
-![Irregular CSV example with timestamps](ex6.png)
 
 ## The search box
 

@@ -6,7 +6,7 @@ import logging
 
 import numpy as np
 
-from . import color_util
+from . import color_util, data_util
 from .buf_util import ensure_buffer
 
 logger = logging.getLogger(__name__)
@@ -17,6 +17,10 @@ class FigData(object):
         # cycles.
         self.start_item_id = parent.next_item_id
         self.item_cnt = 0  # Should be filled in by subclass.
+
+        # For checking that the parameters have consistent dimensions.
+        self.dim_info = []
+        self.dims = collections.defaultdict(dict)
 
     # Subclasses may override this.  The default function assumes the existence
     # of self.colors.
@@ -76,15 +80,31 @@ class FigData(object):
             'data_y': _data_coord('y', Y[best_idx]),
         }
 
-    def _get_dims(self, name, data, dim_names, min_dims=1):
+    # Record the dimensions of parameter `data` (with name `name`), where each
+    # dimension is named using `dim_names`.
+    #
+    # If multi-dimensional lists are possible (e.g., X = [[1,2],[3,4]]), the
+    # caller must first call ensure_buffer() (which in turn numpy-fies the data)
+    # so that we can infer the correct dimension.
+    #
+    # Due to broadcast logic, not all dimensions need to be present.  E.g., if
+    # dim_names == ('lines', 'pts'), then `data` can have shape (200,), in which
+    # case we only record `pts == 200` (`lines` will be absent).
+    def _record_dims(self, name, data, dim_names, min_dims=1):
         assert type(dim_names) == tuple
-        self.dim_info.append((name, data.shape))
+        try:
+            shape = data.shape
+        except AttributeError:
+            shape = (len(data),)
 
-        assert min_dims <= len(data.shape) <= len(dim_names)
-        dim_names = dim_names[-len(data.shape):]
-        for dim_name, sz in zip(dim_names, data.shape):
+        self.dim_info.append((name, shape))
+
+        assert min_dims <= len(shape) <= len(dim_names)
+        dim_names = dim_names[-len(shape):]
+        for dim_name, sz in zip(dim_names, shape):
             self.dims[dim_name][name] = sz
 
+    # Verify that the dimensions recorded via _record_dims() are consistent.
     def _verify_dims(self, dim_name, default=None, must=None):
         def _raise(msg):
             raise ValueError(
@@ -136,12 +156,10 @@ class RectangularLineData(FigData):
         # `lines`: number of lines (= items).
         # `pts`: number of points per line.
         # `rgb': duh.
-        self.dim_info = []
-        self.dims = collections.defaultdict(dict)
-        self._get_dims('X', self.X, ('lines', 'pts'))
-        self._get_dims('Y', self.Y, ('lines', 'pts'))
+        self._record_dims('X', self.X, ('lines', 'pts'))
+        self._record_dims('Y', self.Y, ('lines', 'pts'))
         if colors is not None:
-            self._get_dims('colors', self.colors, ('lines', 'rgb'))
+            self._record_dims('colors', self.colors, ('lines', 'rgb'))
 
         self.item_cnt = self._verify_dims('lines', 1)
         self.pts_cnt = self._verify_dims('pts')
@@ -176,28 +194,42 @@ class FreeformLineData(FigData):
         copy_data = kwargs.pop('copy_data', True)
         self.X = ensure_buffer(X, copy_data=copy_data)
         self.Y = ensure_buffer(Y, copy_data=copy_data)
-        self.start_idxs = ensure_buffer(
-            kwargs.pop('start_idxs'), copy_data=copy_data)
+        self._record_dims('X', self.X, ('pts',))
+        self._record_dims('Y', self.Y, ('pts',))
+
+        if 'groupby' in kwargs:
+            assert 'start_idxs' not in kwargs, \
+                   '`groupby` and `start_idxs` cannot appear together!'
+            groupby = kwargs.pop('groupby')
+
+            self._record_dims('groupby', groupby, ('pts',))
+            self.total_pts_cnt = self._verify_dims('pts')
+
+            unique_keys, idxs, start_idxs = data_util.compute_groupby(groupby)
+
+            self._record_dims('unique_keys', unique_keys, ('lines',))
+
+            self.X = ensure_buffer((np.asarray(self.X))[idxs], copy_data=False)
+            self.Y = ensure_buffer((np.asarray(self.Y))[idxs], copy_data=False)
+            self.start_idxs = ensure_buffer(start_idxs, copy_data=False)
+
+            if ('label' not in kwargs) and ('labels' not in kwargs):
+                kwargs['labels'] = [str(k) for k in unique_keys]
+
+        else:
+            self.start_idxs = ensure_buffer(
+                kwargs.pop('start_idxs'), copy_data=copy_data)
+            self._record_dims('start_idxs', self.start_idxs, ('lines',))
+            self.total_pts_cnt = self._verify_dims('pts')
+
         if colors is not None:
             self.colors = ensure_buffer(colors, copy_data=copy_data)
-
-        # `lines`: number of lines (= items).
-        # `pts`: number of *all* the points.
-        # `rgb': duh.
-        self.dim_info = []
-        self.dims = collections.defaultdict(dict)
-        self._get_dims('X', self.X, ('pts',))
-        self._get_dims('Y', self.Y, ('pts',))
-        self._get_dims('start_idxs', self.start_idxs, ('lines',))
-        if colors is not None:
-            self._get_dims('colors', self.colors, ('lines', 'rgb'))
-
-        self.item_cnt = self._verify_dims('lines', 1)
-        self.total_pts_cnt = self._verify_dims('pts')
-
-        if colors is not None:
+            self._record_dims('colors', self.colors, ('lines', 'rgb'))
+            self.item_cnt = self._verify_dims('lines', 1)
             self._verify_dims('rgb', must=3)
+
         else:
+            self.item_cnt = self._verify_dims('lines', 1)
             self.colors = ensure_buffer(
                 color_util.default_colors(self.start_item_id, self.item_cnt))
 
@@ -224,7 +256,7 @@ class FreeformLineData(FigData):
 # Create a figure of the appropriate class.
 # TODO: Support other types!
 def create_fig_data(parent, *args, **kwargs):
-    if 'start_idxs' in kwargs:
+    if ('start_idxs' in kwargs) or ('groupby' in kwargs):
         return FreeformLineData(parent, *args, **kwargs)
     else:
         return RectangularLineData(parent, *args, **kwargs)
