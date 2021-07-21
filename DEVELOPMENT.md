@@ -4,8 +4,18 @@ The following should work on Linux and Mac OS.  (Other OS's are not supported ye
 
 ## Prerequisites
 
-In order to build, you need CMake and
-[pybind11](https://pybind11.readthedocs.io/en/stable/index.html).
+In order to build, you need [CMake](https://cmake.org/install/),
+[webpack](https://webpack.js.org/), [terser](https://github.com/terser/terser),
+and [pybind11](https://pybind11.readthedocs.io/en/stable/index.html).  You can
+install webpack and terser by:
+
+```
+npm install -g webpack webpack-cli terser
+```
+
+(If don't like it, you don't *need* `-g`, but the commands `webpack` and
+`terser` must be in `$PATH` when you run the build.)
+
 You can install pybind11 by:
 
 ```
@@ -65,6 +75,10 @@ ls ../src/croquis/lib
 Use `-DCMAKE_BUILD_TYPE=Debug` to build in Debug mode; use `make check` to run
 tests (there aren't many).
 
+In addition, there are some integration tests under `src/ui_tests`: you can run
+them by `run_all_tests.py`.  To run it, you first need to install
+[playwright](https://playwright.dev/python/).
+
 Now you can simply add `src` directory to your Python import path and do:
 
 ```
@@ -76,6 +90,10 @@ tweak operations to (hopefully) make life easier:
 
 * We reload js/css file every time you restart the kernel.
 * Python/C++ code will leave logging on `dbg.log` (under the current directory).
+
+In the "dev environment", croquis also runs webpack at runtime(!) to create the
+js bundle that is then loaded by the browser, which means that webpack must be
+in your `PATH`.
 
 ## Packaging
 

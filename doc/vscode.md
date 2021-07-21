@@ -44,7 +44,9 @@ debugging so that the change takes effect:
             "name": "Launch Chrome against localhost",
             ......
             "pathMapping": {
-                "/nbextensions/croquis_fe_dev.js": "${workspaceFolder}/croquis_fe.js"
+                "/nbextensions": "${workspaceFolder}",
+                "/nbextensions/croquis_loader_dev.js":
+                    "${workspaceFolder}/croquis_loader.js",
             }
         }
     ]

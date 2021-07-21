@@ -6,6 +6,7 @@
 # dev environment, we enable extra logging to help debugging.
 
 import os
+import subprocess
 import sys
 
 if os.environ.get('CROQUIS_UNITTEST'):
@@ -34,20 +35,37 @@ else:
               file=sys.stderr)
 
 if ENV == 'dev':
+    # Tell Jupyter to import our nbextension.
+    # (In non-dev environment, this should have been handled when the package
+    # was built: see CMakeLists.txt and setup.py.)
+    #
+    # We also build the js "bundle" by calling webpack - takes <1s, so it seems
+    # OK for now.  (Otherwise we would have to add the "js build" step
+    # somewhere...)
+
     import notebook.nbextensions
 
-    # Tell Jupyter to import our nbextension.
-    # (In non-dev environment, this should have been handled at package
-    # installation time: see setup.py.)
     curdir = os.path.dirname(os.path.realpath(__file__))
-    notebook.nbextensions.install_nbextension(
-        os.path.join(curdir, '../js/croquis_fe.css'),
-        destination='croquis_fe_dev.css',
-        user=True, symlink=True, overwrite=True)
-    notebook.nbextensions.install_nbextension(
-        os.path.join(curdir, '../js/croquis_fe.js'),
-        destination='croquis_fe_dev.js',
-        user=True, symlink=True, overwrite=True)
+    jsdir = os.path.join(curdir, '../js')
+
+    try:
+        subprocess.check_call(['webpack', '--mode=development'], cwd=jsdir)
+    except:
+        print('''Failed to generate the frontend javascript file:
+please check if webpack is available.  You can install webpack by:
+    npm install -g --save-dev webpack webpack-cli
+''', file=sys.stderr)
+        raise
+
+    def _install(src, dest):
+        notebook.nbextensions.install_nbextension(
+            os.path.join(jsdir, src), destination=dest,
+            user=True, symlink=True, overwrite=True)
+
+    _install('croquis_fe.css', 'croquis_fe_dev.css')
+    _install('croquis_loader.js', 'croquis_loader_dev.js')
+    _install('dist/croquis_fe_dev.js', 'croquis_fe_dev.js')
+    _install('dist/croquis_fe_dev.js.map', 'croquis_fe_dev.js.map')
 
 def is_dev(): return ENV == 'dev'
 def has_ipython(): return HAS_IPYTHON

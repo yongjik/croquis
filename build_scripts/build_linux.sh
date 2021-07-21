@@ -40,11 +40,17 @@ if [[ "$INSIDE_DOCKER" != "Y" ]]; then
     ) > .pkg_build/croquis_src.zip
     cp "$0" .pkg_build
 
+    # We now need node.js, which doesn't work on manylinux2010, so let's use
+    # manylinux2014.
+    #
+    # (Well, we could try running node.js *outside* of Docker, and just copy the
+    # js bundle file into Docker, but that's a lot of work, and I'm not sure if
+    # anyone actually needs it ...)
     docker rm "$docker_container_name" || true
-    docker pull quay.io/pypa/manylinux2010_x86_64
+    docker pull quay.io/pypa/manylinux2014_x86_64
     docker run --name "$docker_container_name" \
         --mount type=bind,src="$PWD/.pkg_build",dst=/mnt/bind \
-        quay.io/pypa/manylinux2010_x86_64:latest \
+        quay.io/pypa/manylinux2014_x86_64:latest \
         bash -c "mkdir /build ; cd /build ; unzip /mnt/bind/croquis_src.zip ;
                  INSIDE_DOCKER=Y /mnt/bind/build_linux.sh \
                      '$py_version' '$pkg_version'"
@@ -64,6 +70,14 @@ else
 
     # Install necessary components.
     pip3 install pybind11
+
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
+    export NVM_DIR="$HOME/.nvm"
+    set +o xtrace
+    . $NVM_DIR/nvm.sh
+    nvm install node
+    set -o xtrace
+    npm install -g webpack webpack-cli terser
 
     # Now build!
     mkdir -p /build/build.make

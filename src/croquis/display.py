@@ -31,8 +31,11 @@ class DisplayObj(object):
         'debug': False,
         'reload_fe': False,  # Force reload frontend js, for debugging.
 
-        # Where to find our js module: see env_helper.py and setup.py.
-        '_js_module_name':
+        # Where to find our js modules: see env_helper.py and setup.py.
+        '_js_loader_module':
+            'croquis_loader_dev' if env_helper.is_dev()
+                                 else 'croquis_fe/croquis_loader',
+        '_js_main_module':
             'croquis_fe_dev' if env_helper.is_dev()
                              else 'croquis_fe/croquis_fe',
     }
@@ -146,14 +149,19 @@ class DisplayObj(object):
 
     {% if reload_fe %}
     // Force reload for dev environment.
-    require.undef('nbextensions/{{_js_module_name}}');
+    require.undef('nbextensions/{{_js_loader_module}}');
+    require.undef('nbextensions/{{_js_main_module}}');
     {% endif %}
 
     requirejs(['base/js/utils'], function(utils) {
-        utils.load_extension('{{_js_module_name}}').then((croquis) => {
-            console.log('croquis_fe module object is: ', croquis)
-            croquis.init({{'true' if reload_fe else 'false'}}, '{{BE_uuid}}');
-            ctxt = new croquis.Ctxt('{{canvas_id}}');
+        Promise.all([
+            utils.load_extension('{{_js_loader_module}}'),
+            utils.load_extension('{{_js_main_module}}'),
+        ]).then((values) => {
+            console.log('croquis module objects are: ', values);
+            let [loader, main] = values;
+            loader.init({{'true' if reload_fe else 'false'}}, '{{BE_uuid}}');
+            ctxt = loader.create_ctxt(main, '{{canvas_id}}');
             console.log('croquis_fe: created ctxt object: ', ctxt);
         }).catch((err) => {
             console.log('Error occurred loading croquis_fe module: ', err)

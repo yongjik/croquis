@@ -4,7 +4,9 @@ import os
 import pathlib
 import setuptools
 import setuptools.command.build_ext
+import setuptools.command.build_py
 import shutil
+import subprocess
 import sys
 
 MODE = None
@@ -13,6 +15,7 @@ curpath = pathlib.Path(os.path.dirname(os.path.realpath(__file__)))
 os.chdir(curpath)
 
 libpaths = None
+js_bundle_dir = None
 
 # Create my own build_ext class, which simply copies the file to the correct
 # location.
@@ -38,6 +41,17 @@ class MyBuildExt(setuptools.command.build_ext.build_ext):
 pass
 ''')
 
+# Copy the generated js bundle files.
+# Copied from: https://digip.org/blog/2011/01/generating-data-files-in-setup.py.html
+class MyBuildPy(setuptools.command.build_py.build_py):
+    def run(self):
+        static_dir = pathlib.Path(self.build_lib) / 'croquis_fe' / 'static'
+        self.mkpath(str(static_dir))
+        for fn in 'croquis_fe.js', 'croquis_fe.js.map':
+            shutil.copy(src=(js_bundle_dir / fn), dst=(static_dir / fn))
+
+        super().run()
+
 if __name__ == '__main__':
     MODE = sys.argv[1] if len(sys.argv) >= 2 else None
 
@@ -48,12 +62,14 @@ if __name__ == '__main__':
         if (curpath / 'build').exists():
             shutil.rmtree(curpath / 'build')
         libpaths = [sys.argv.pop(1)]
+        js_bundle_dir = pathlib.Path(sys.argv.pop(1))
 
     elif MODE == '-f':
         print('*** setup.py invoked directly: ' +
               "I assume you know what you're doing ...")
         del sys.argv[1]
         libpaths = list(curpath.glob('src/croquis/lib/_csrc*'))
+        js_bundle_dir = curpath / 'src' / 'js' / 'dist'
 
     else:
         print('''
@@ -111,7 +127,10 @@ if __name__ == '__main__':
 
         ext_modules=[csrc],
         # package_data={'': ['lib/_csrc*']},
-        cmdclass={'build_ext': MyBuildExt},
+        cmdclass={
+            'build_ext': MyBuildExt,
+            'build_py': MyBuildPy,
+        },
 
         #-----------------------------------------
         # Install nbextension at install time.
@@ -131,7 +150,11 @@ if __name__ == '__main__':
             'croquis_fe': [
                 # Symlinked to src/js.
                 'static/croquis_fe.css',
-                'static/croquis_fe.js',
+                'static/croquis_loader.js',
+
+                # croquis_fe.js & croquis_fe.js.map cannot be added like this,
+                # because they're not in the correct directory.  Instead, they
+                # are added by MyBuildPy class.
             ],
         },
 
@@ -141,7 +164,9 @@ if __name__ == '__main__':
             (
                 'share/jupyter/nbextensions/croquis_fe', [
                     'src/js/croquis_fe.css',
-                    'src/js/croquis_fe.js',
+                    'src/js/croquis_loader.js',
+                    str(js_bundle_dir / 'croquis_fe.js'),
+                    str(js_bundle_dir / 'croquis_fe.js.map'),
                 ],
             ),
             (
