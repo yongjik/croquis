@@ -72,8 +72,10 @@ ls ../src/croquis/lib
 # Will see something like: _csrc.cpython-39-x86_64-linux-gnu.so
 ```
 
-Use `-DCMAKE_BUILD_TYPE=Debug` to build in Debug mode; use `make check` to run
-tests (there aren't many).
+Use `-DCMAKE_BUILD_TYPE=Debug` to build in Debug mode.
+
+Use `make check` to run tests (there aren't many): for running tests, you also
+need to install [pytest](https://docs.pytest.org/).
 
 In addition, there are some integration tests under `src/ui_tests`: you can run
 them by `run_all_tests.py`.  To run it, you first need to install

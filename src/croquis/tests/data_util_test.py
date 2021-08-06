@@ -1,9 +1,9 @@
-#!/usr/bin/env python3
+# Use pytest to run.
 
 import os
 import sys
 
-curdir = os.path.dirname(os.path.realpath(sys.argv[0]))
+curdir = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, f'{curdir}/../..')
 
 os.environ['CROQUIS_UNITTEST'] = 'Y'
@@ -43,11 +43,11 @@ def run_test(nkeys, nrows):
         for idx in range(start_idx, next_idx):
             assert keys[idxs[idx]] == unique_keys[key_idx]
 
-run_test(1, 1)
-run_test(1, 10000)
-run_test(10000, 10000)
+def test_simple():
+    run_test(1, 1)
+    run_test(1, 10000)
+    run_test(10000, 10000)
 
-for nkeys in range(1, 100):
-    run_test(nkeys, 1000)
-
-print('All done!')
+def test_loop():
+    for nkeys in range(1, 100):
+        run_test(nkeys, 1000)

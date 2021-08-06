@@ -177,6 +177,12 @@ add_dependencies(wheel webpack)
 # NOTE: Please run the test as "make check" because apparently CMake doesn't
 #       build test targets if you run "make test".  Seriously?
 # See: https://stackoverflow.com/questions/733475/cmake-ctest-make-test-doesnt-build-tests
+#
+# For Python tests, you can also simply run pytest directly under
+# src/croquis/tests for better output, e.g.,
+#       cd (top dir)/src/croquis/tests
+#       pytest  # Runs all tests
+#       pytest data_util_test.py  # Runs just one file.
 
 enable_testing()
 add_custom_target(check COMMAND "${CMAKE_CTEST_COMMAND}")
@@ -196,7 +202,7 @@ endfunction()
 
 function(py_test TEST_SRC)
     get_filename_component(test_name "${TEST_SRC}" NAME_WLE)
-    add_test(NAME "${test_name}" COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SRC}")
+    add_test(NAME "${test_name}" COMMAND pytest "${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SRC}")
 
     message("test name = ${test_name}")
 endfunction()
