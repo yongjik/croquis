@@ -1,6 +1,6 @@
 // The axis handler.
 
-import { INFLIGHT_REQ_EXPIRE_MSEC, sqr } from './util.js';
+import { assert, INFLIGHT_REQ_EXPIRE_MSEC, sqr } from './util.js';
 
 // Helper class used by AxisHandler.
 class AxisTick {
@@ -19,7 +19,7 @@ class AxisTick {
             this.css_field = 'top';
         }
         else
-            throw 'Should not happen!';
+            assert(null);
 
         // Add the new tick, label, and grid line.
         this.tick = document.createElement('div');

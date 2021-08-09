@@ -1,7 +1,7 @@
 // Encapsulates mouse interaction inside the canvas.
 
 import { REPLAY_RUNNING } from './event_replayer.js';
-import { sqr } from './util.js';
+import { assert, sqr } from './util.js';
 
 const MOUSE_STOP_THRESHOLD_MSEC = 30.0;
 const MIN_SELECT_AREA_DIAG = 5;  // pixels
@@ -182,7 +182,7 @@ export class CanvasMouseHandler {
                                        this.y_offset0 + y - this.start_y);
         }
         else {
-            throw 'Should not happen!';
+            assert(null);
         }
     }
 

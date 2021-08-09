@@ -6,6 +6,13 @@ export const ZOOM_FACTOR = 1.5;  // Must match constants.h.
 export const ITEM_ID_SENTINEL = Number.MAX_SAFE_INTEGER;  // Used by Label.
 export const INFLIGHT_REQ_EXPIRE_MSEC = 5000;
 
+// TODO: Any way to generate a better assert message?
+export function assert(x, msg) {
+    if (!x) {
+        throw (msg) ? msg : 'Should not happen!';
+    }
+}
+
 export function sqr(x) { return x * x; }
 
 // Current time as string HH:MM:SS.mmm, for debug logging.
