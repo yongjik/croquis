@@ -91,7 +91,58 @@ class NearestPts {
 }
 
 export class TileHandler {
-    constructor(ctxt) {
+    constructor(ctxt, parent_elem) {
+        // Shorthand.
+        let qs = (selector) => parent_elem.querySelector(selector);
+
+        // Build the HTML.
+        // TODO: Currently we only build the entire innard of div.cr_main1 here.
+        //       Should refactor code so that each part is handled by its own
+        //       class.
+        parent_elem.innerHTML = `
+<!-- The height of cr_y_axis must be manually adjusted to match (canvas
+     height) + (width of x axis line).  -->
+<div class="cr_y_axis"></div>
+<!-- I don't know why, but Chrome *sometimes* enables dragging the whole
+     canvas after interaction... I should probably add draggable="false"
+     everywhere to be sure... -->
+<div class="cr_canvas_plus_x_axis" draggable="false">
+  <div class="cr_canvas" draggable="false">
+    <div class="cr_progressbar" draggable="false">Please wait, the graph is being generated ...</div>
+    <div class="cr_inner" draggable="false"></div>
+    <div class="cr_foreground" draggable="false"></div>
+    <div class="cr_grid" draggable="false"></div>
+    <div class="cr_select_area" draggable="false"></div>
+  </div>
+  <div class="cr_x_axis"></div>
+  <!-- cr_tooltip cannot be inside cr_canvas because cr_canvas has
+       "overflow: hidden" but the tooltip could be partially out of the
+       canvas. -->
+  <div class="cr_tooltip"></div>
+</div>
+<div class="cr_legend">
+  <div class="cr_searchbox">
+    <input type="text" placeholder="(all shown)"/>
+  </div>
+  <div class="cr_search_ctrl">
+    <input type=checkbox class="cr_regex"/>Regex
+    <input type=checkbox class="cr_autoselect" checked/>Autoselect
+    <button class="cr_more">More...</button>
+    <ul class="cr_btn_popup">
+        <li><a class="cr_select_all">Select all</a></li>
+        <li><a class="cr_deselect_all">Deselect all</a></li>
+        <!-- text for the following two links are filled in
+             dynamically. -->
+        <li><a class="cr_select_matching"></a></li>
+        <li><a class="cr_deselect_matching"></a></li>
+    </ul>
+  </div>
+  <div class="cr_search_stat"></div>
+  <ul class="cr_search_result"></ul>
+  <!-- <div class="cr_info"></div> -->
+</div>
+`;
+
         // Used when replaying tile events, to keep context.
         this.tile_replay_cb = null;
         this.tile_replay_buf = [];
@@ -119,12 +170,9 @@ export class TileHandler {
             },
         });
 
-        // Shorthand.
-        let qs = (selector) => ctxt.canvas_main.querySelector(selector);
-
         this.ctxt = ctxt;
         this.tile_set = new TileSet(ctxt);
-        this.canvas = ctxt.canvas;
+        this.canvas = document.querySelector(`#${ctxt.canvas_id} .cr_canvas`);
         this.axis_handler = new AxisHandler(ctxt, this);
         this.fg = this.canvas.querySelector('.cr_foreground');
 
@@ -144,10 +192,13 @@ export class TileHandler {
         this.label_map = new Map();
         this.highlighted_label = null;
 
-        qs('.cr_home_btn').addEventListener('click', (ev) => {
+        let ctrl_elem =
+            document.querySelector(`#${ctxt.canvas_id} .cr_ctrl_panel`);
+        let qs_ctrl = (selector) => ctrl_elem.querySelector(selector);
+        qs_ctrl('.cr_home_btn').addEventListener('click', (ev) => {
             this.ctxt.send('resize', {w: this.ctxt.width, h: this.ctxt.height});
         });
-        qs('.cr_zoom_in_btn').addEventListener('click', (ev) => {
+        qs_ctrl('.cr_zoom_in_btn').addEventListener('click', (ev) => {
             this.tile_set.zoom_level++;
             this.tile_set.x_offset *= ZOOM_FACTOR;
             this.tile_set.y_offset *= ZOOM_FACTOR;
@@ -155,7 +206,7 @@ export class TileHandler {
             this.axis_handler.update_location(true);
             this.request_new_tiles();
         });
-        qs('.cr_zoom_out_btn').addEventListener('click', (ev) => {
+        qs_ctrl('.cr_zoom_out_btn').addEventListener('click', (ev) => {
             this.tile_set.zoom_level--;
             this.tile_set.x_offset /= ZOOM_FACTOR;
             this.tile_set.y_offset /= ZOOM_FACTOR;

@@ -46,7 +46,6 @@ export class Ctxt {
         this.env = env;
         this.canvas_id = canvas_id;
         this.canvas_main = document.querySelector('#' + canvas_id);
-        this.canvas = document.querySelector(`#${canvas_id} .cr_canvas`);
 
         // TODO: This is confusing, as we also have TileSet.width/height.
         //       Currently, Ctxt.width/height is updated when we *send* resize
@@ -60,7 +59,10 @@ export class Ctxt {
         // TODO: Check if there's some hook inside Jupyter?
         env.$('#' + canvas_id).on('remove', () => { this.cleanup_handler(); });
 
-        this.tile_handler = new TileHandler(this);
+        // TileHandler constructor also builds the inner HTML structure.
+        let parent_elem = document.querySelector(`#${canvas_id} .cr_main1`);
+        parent_elem.innerHTML = '';
+        this.tile_handler = new TileHandler(this, parent_elem);
 
         this.log_area = env.$('#' + canvas_id + '-log');
         if (this.log_area) {
@@ -76,8 +78,9 @@ export class Ctxt {
         // Get the current window size and send it as part of the init
         // request.
         env.css_loaded.then(() => {
-            this.width = this.canvas.clientWidth;
-            this.height = this.canvas.clientHeight;
+            let canvas = this.get_canvas();
+            this.width = canvas.clientWidth;
+            this.height = canvas.clientHeight;
             this.dbglog('Initial canvas width/height: ',
                         'w=', this.width, 'h=', this.height);
             console.log('Initial canvas width/height: ',
@@ -88,7 +91,7 @@ export class Ctxt {
 
             // Prepare the progress indicator to fire if BE takes too long.
             setTimeout(() => {
-                let bar = this.canvas.querySelector('.cr_progressbar');
+                let bar = canvas.querySelector('.cr_progressbar');
                 if (bar) bar.style.visibility = 'visible';
             }, PROGRESSBAR_TIMEOUT);
 
@@ -109,8 +112,9 @@ export class Ctxt {
     // Called when the window size *may* have changed: see the discussion at the
     // top of this file about window.setInterval().
     resize_handler() {
-        let width = this.canvas.clientWidth;
-        let height = this.canvas.clientHeight;
+        let canvas = this.get_canvas();
+        let width = canvas.clientWidth;
+        let height = canvas.clientHeight;
 
         // Let's only consider the width for now: the height is adjusted
         // according to the width.
@@ -168,7 +172,7 @@ export class Ctxt {
                 // TODO: Now what?
             }
             this.height = msg_dict.h;
-            this.canvas.style.height = msg_dict.h + 'px';
+            this.get_canvas().style.height = msg_dict.h + 'px';
 
             // Add 2px (width of the x axis).
             this.canvas_main.querySelector('.cr_y_axis').style.height =
@@ -207,5 +211,11 @@ export class Ctxt {
             ).join(' ');
             this.log_area.append(document.createTextNode(s), "<br/>");
         }
+    }
+
+    // Internal helper function, because now `canvas` is dynamically generated.
+    // TODO: Doesn't belong here, refactor!
+    get_canvas() {
+        return document.querySelector(`#${this.canvas_id} .cr_canvas`);
     }
 }

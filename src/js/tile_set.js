@@ -13,7 +13,7 @@ export class TileSet {
         // Canvas is not initialized yet.
         this.width = this.height = null;
 
-        let canvas = ctxt.canvas;
+        let canvas = document.querySelector(`#${ctxt.canvas_id} .cr_canvas`);
         this.inner_div = canvas.querySelector('.cr_inner');
         this.fg = canvas.querySelector('.cr_foreground');
 

@@ -93,47 +93,7 @@ class DisplayObj(object):
       <label for="{{canvas_id}}-pan">pan</label>
     </div>
     <div class="cr_main1" dir="ltr">
-      <!-- The height of cr_y_axis must be manually adjusted to match (canvas
-           height) + (width of x axis line).  -->
-      <div class="cr_y_axis"></div>
-      <!-- I don't know why, but Chrome *sometimes* enables dragging the whole
-           canvas after interaction... I should probably add draggable="false"
-           everywhere to be sure... -->
-      <div class="cr_canvas_plus_x_axis" draggable="false">
-        <div class="cr_canvas" draggable="false">
-          <div class="cr_progressbar" draggable="false">Please wait, the graph is being generated ...</div>
-          <div class="cr_inner" draggable="false"></div>
-          <div class="cr_foreground" draggable="false"></div>
-          <div class="cr_grid" draggable="false"></div>
-          <div class="cr_select_area" draggable="false"></div>
-        </div>
-        <div class="cr_x_axis"></div>
-        <!-- cr_tooltip cannot be inside cr_canvas because cr_canvas has
-             "overflow: hidden" but the tooltip could be partially out of the
-             canvas. -->
-        <div class="cr_tooltip"></div>
-      </div>
-      <div class="cr_legend">
-        <div class="cr_searchbox">
-          <input type="text" placeholder="(all shown)"/>
-        </div>
-        <div class="cr_search_ctrl">
-          <input type=checkbox class="cr_regex"/>Regex
-          <input type=checkbox class="cr_autoselect" checked/>Autoselect
-          <button class="cr_more">More...</button>
-          <ul class="cr_btn_popup">
-              <li><a class="cr_select_all">Select all</a></li>
-              <li><a class="cr_deselect_all">Deselect all</a></li>
-              <!-- text for the following two links are filled in
-                   dynamically. -->
-              <li><a class="cr_select_matching"></a></li>
-              <li><a class="cr_deselect_matching"></a></li>
-          </ul>
-        </div>
-        <div class="cr_search_stat"></div>
-        <ul class="cr_search_result"></ul>
-        <!-- <div class="cr_info"></div> -->
-      </div>
+      <!-- Built by TileHandler in FE. -->
     </div>
     {% if debug %}
     <!-- <div class="cr_dbg_status"></div> -->
