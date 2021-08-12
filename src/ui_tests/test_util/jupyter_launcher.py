@@ -103,17 +103,24 @@ class JupyterLauncher(object):
     # Create the notebook (.ipynb) file with the given content and return a URL
     # for opening it.
     # cf. https://stackoverflow.com/a/45672031
-    def create_new_notebook(self, filename, cell_contents):
+    def create_new_notebook(self, filename, cell_contents,
+                            separate_prefix=False):
         assert filename.endswith('.ipynb'), filename
 
         PREFIX = f'''
+### PREFIX ###
 import sys
 
 sys.path.insert(0, "{croquis_srcdir}")
 sys.path.insert(0, "{curdir}")
+
+print('###' + ' PREFIX' + ' OK' + ' ###')
 '''
-        cell_contents = cell_contents.copy()
-        cell_contents[0] = PREFIX + cell_contents[0]
+        if separate_prefix:
+            cell_contents = [PREFIX] + cell_contents
+        else:
+            cell_contents = cell_contents.copy()
+            cell_contents[0] = PREFIX + cell_contents[0]
 
         nb = nbformat.v4.new_notebook()
         nb['cells'] = [nbformat.v4.new_code_cell(c) for c in cell_contents]

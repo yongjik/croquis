@@ -3,7 +3,7 @@
 import re
 import time
 
-from test_util.test_helper import get_center_coord
+from test_util import test_helper
 
 CELL1 = '''
 ### CELL1 ###
@@ -32,24 +32,23 @@ fig.add(X, Y, marker_size=3, labels=labels)
 fig.show()
 '''
 
-def test_zoom(launcher, context, page):
+def test_zoom(launcher, context):
+    page = context.new_page()
     url = launcher.create_new_notebook('basic_test.ipynb', [CELL1])
     page.goto(url)
 
-    page.click('pre[role="presentation"]:has-text("CELL1")')
-    page.press('textarea', 'Control+Enter')
-
     # Scroll to the bottom.
-    page.wait_for_selector('div.cr_x_axis').scroll_into_view_if_needed()
+    cell, x_axis = test_helper.run_jupyter_cell(page, 'CELL1', 'div.cr_x_axis')
+    x_axis.scroll_into_view_if_needed()
 
     # Check screen coordinate of x=-1, x=1, y=-1, y=1.
-    xleft, _ = get_center_coord(
+    xleft, _ = test_helper.get_center_coord1(
         page, r'div.cr_x_axis div.cr_label >> text=/^-1(\.0)?$/')
-    xright, _ = get_center_coord(
+    xright, _ = test_helper.get_center_coord1(
         page, r'div.cr_x_axis div.cr_label >> text=/^1(\.0)?$/')
-    _, ytop = get_center_coord(
+    _, ytop = test_helper.get_center_coord1(
         page, 'div.cr_y_axis div.cr_label >> text=/^1(\.0)?$/')
-    _, ybottom = get_center_coord(
+    _, ybottom = test_helper.get_center_coord1(
         page, 'div.cr_y_axis div.cr_label >> text=/^-1(\.0)?/')
 
     # print('coords = ', xleft, xright, ytop, ybottom)
@@ -73,30 +72,24 @@ def test_zoom(launcher, context, page):
     time.sleep(0.1)
     page.mouse.up()
 
-    xzero, _ = get_center_coord(
-        page, 'div.cr_x_axis div.cr_label >> text="0.0"')
-    _, yzero = get_center_coord(
-        page, 'div.cr_y_axis div.cr_label >> text="0.0"')
+    def coord_cb():
+        xzero, _ = test_helper.get_center_coord1(
+            page, 'div.cr_x_axis div.cr_label >> text="0.0"')
+        _, yzero = test_helper.get_center_coord1(
+            page, 'div.cr_y_axis div.cr_label >> text="0.0"')
 
-    # print('coords = ', xzero, yzero)
+        # print('coords = ', xzero, yzero)
+        return xzero, yzero
 
-    # Now zoom at the origin, and see if there's tooltip.
-    page.mouse.move(xzero, yzero)
-    tooltip = page.wait_for_selector('div.cr_tooltip', state='visible')
-    tooltip_text = tooltip.text_content()
-    # print('tooltip = ', tooltip_text)
-    assert re.search(r'origin', tooltip_text), tooltip_text
+    # Now zoom at the origin, and verify that we have the tooltip.
+    test_helper.verify_tooltip(page, cell, coord_cb,
+        lambda text: re.search(r'origin(.|\n)*\(\s*0,\s+0\)', text))
 
-    # Coordinates may take a while to arrive.
-    time.sleep(0.3)
-    tooltip = page.wait_for_selector('div.cr_tooltip', state='visible')
-    tooltip_text = tooltip.text_content()
-    # print('tooltip after delay = ', tooltip_text)
-    assert re.search(r'origin(.|\n)*\(\s*0,\s+0\)', tooltip_text), tooltip_text
-
-    print('test_zoom successful!')
-
+    # print('test_zoom successful!')
     # page.pause()
 
-def run_tests(launcher, context, page):
-    test_zoom(launcher, context, page)
+    page.close()
+
+def run_tests(launcher, context):
+    print('Running basic_test.py ...')
+    test_zoom(launcher, context)

@@ -45,10 +45,12 @@ with JupyterLauncher(cmd_args) as launcher, sync_playwright() as p:
     browser = getattr(p, cmd_args.browser).launch(**kwargs)
     context = browser.new_context()
     context.set_default_timeout(cmd_args.timeout * 1000)
-    page = context.new_page()
-    page.goto(launcher.url)
+    context.new_page().goto(launcher.url)
 
     from tests import basic_test
-    basic_test.run_tests(launcher, context, page)
+    basic_test.run_tests(launcher, context)
+
+    from tests import save_test
+    save_test.run_tests(launcher, context)
 
     browser.close()
