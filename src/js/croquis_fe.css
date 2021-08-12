@@ -25,39 +25,15 @@
 
 .croquis_nbext .cr_main1 {
     margin: 0px 25px 30px 25px;
-
-    display: flex;
-    flex-direction: row;
-}
-
-.croquis_nbext .cr_x_axis, .croquis_nbext .cr_y_axis {
-    font-size: 12px;
-    overflow: visible;
-    position: relative;
-}
-
-.croquis_nbext .cr_y_axis {
-    flex: 0 0 60px;
-    align-self: flex-start;  /* Flush to the top. */
-    width: 60px;
-    border-right: 2px solid black;
-
-    /* Height should be (canvas height) + 2px (= width of x axis). */
 }
 
 .croquis_nbext .cr_canvas_plus_x_axis {
-    flex: 0.9 1 320px;
     position: relative;
 
     /* We need this because cr_tooltip is under this and must be visible even
      * when it's partially out of the canvas.
      */
     overflow: visible;
-}
-
-.croquis_nbext .cr_x_axis {
-    height: 30px;
-    border-top: 2px solid black;
 }
 
 .croquis_nbext .cr_x_axis .cr_tick {
@@ -91,21 +67,7 @@
 }
 
 .croquis_nbext .cr_canvas {
-    overflow: hidden;
-
     height: 50px;  /* Initial height before anything is drawn. */
-
-    /* Needed here so that the .inner div works relative to this. */
-    position: relative;
-}
-
-/* Includes .cr_progressbar, .cr_inner, .cr_foreground, .cr_grid, and
- * .cr_select_area.
- */
-.croquis_nbext .cr_canvas > div {
-    position: absolute;
-    left: 0px;
-    top: 0px;
 }
 
 .croquis_nbext .cr_inner {

@@ -2,6 +2,7 @@
 
 import { AxisHandler } from './axis_handler.js';
 import { CanvasMouseHandler } from './canvas_mouse_handler.js';
+import { apply_css_tree, apply_flex, disable_drag } from './css_helper.js';
 import { EventReplayer, REPLAY_RUNNING } from './event_replayer.js';
 import { Label } from './label.js';
 import { TileSet } from './tile_set.js';
@@ -96,23 +97,20 @@ export class TileHandler {
         let qs = (selector) => parent_elem.querySelector(selector);
 
         // Build the HTML.
-        // TODO: Currently we only build the entire innard of div.cr_main1 here.
+        // TODO: Currently we build the entire innard of div.cr_main1 here.
         //       Should refactor code so that each part is handled by its own
         //       class.
         parent_elem.innerHTML = `
 <!-- The height of cr_y_axis must be manually adjusted to match (canvas
      height) + (width of x axis line).  -->
 <div class="cr_y_axis"></div>
-<!-- I don't know why, but Chrome *sometimes* enables dragging the whole
-     canvas after interaction... I should probably add draggable="false"
-     everywhere to be sure... -->
-<div class="cr_canvas_plus_x_axis" draggable="false">
-  <div class="cr_canvas" draggable="false">
-    <div class="cr_progressbar" draggable="false">Please wait, the graph is being generated ...</div>
-    <div class="cr_inner" draggable="false"></div>
-    <div class="cr_foreground" draggable="false"></div>
-    <div class="cr_grid" draggable="false"></div>
-    <div class="cr_select_area" draggable="false"></div>
+<div class="cr_canvas_plus_x_axis">
+  <div class="cr_canvas">
+    <div class="cr_progressbar">Please wait, the graph is being generated ...</div>
+    <div class="cr_inner"></div>
+    <div class="cr_foreground"></div>
+    <div class="cr_grid"></div>
+    <div class="cr_select_area"></div>
   </div>
   <div class="cr_x_axis"></div>
   <!-- cr_tooltip cannot be inside cr_canvas because cr_canvas has
@@ -142,6 +140,47 @@ export class TileHandler {
   <!-- <div class="cr_info"></div> -->
 </div>
 `;
+
+        // I don't know why, but Chrome *sometimes* enables dragging the whole
+        // canvas after interaction... I should probably add draggable="false"
+        // everywhere to be sure...
+        disable_drag(parent_elem, [
+            '.cr_canvas', '.cr_inner', '.cr_foreground', '.cr_grid',
+            '.cr_select_area',
+        ]);
+
+        // NOTE: div.cr_y_axis's height should be (canvas height) + 2px (= width
+        //       of x axis).
+        apply_flex(parent_elem, 'row', [
+            ['.cr_y_axis', '0 0 60px'],
+            ['.cr_canvas_plus_x_axis', '0.9 1 320px'],  // "1 0 auto"?
+        ]);
+        apply_css_tree(parent_elem, [
+            ['.cr_y_axis', 'align-self: flex-start;'],  // Flush to the top.
+            ['.cr_y_axis', 'width: 60px;'],  // TODO: may not be needed?
+        ]);
+
+        apply_flex(qs('.cr_canvas_plus_x_axis'), 'column', [
+            ['.cr_canvas', '1 0 auto'],
+            ['.cr_x_axis', '0 0 30px'],
+        ]);
+
+        // Others.
+        apply_css_tree(parent_elem, [
+            // Set up the axes.
+            ['.cr_x_axis', 'border-top: 2px solid black;'],  // x axis.
+            ['.cr_y_axis', 'border-right: 2px solid black;'],  // y axis.
+
+            // Set up styles for axis ticks.
+            ['.cr_x_axis, .cr_y_axis',
+             'font-size: 12px; overflow: visible; position: relative;'],
+
+            // Miscellaneous.
+            ['.cr_canvas', 'overflow: hidden; position: relative;'],
+            ['.cr_progressbar, .cr_inner, .cr_foreground, ' +
+                 '.cr_grid, .cr_select_area',
+             'position: absolute; left: 0px; top: 0px;'],
+        ]);
 
         // Used when replaying tile events, to keep context.
         this.tile_replay_cb = null;
