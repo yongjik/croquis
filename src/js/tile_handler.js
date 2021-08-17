@@ -821,6 +821,7 @@ export class TileHandler {
             `recompute_highlight() called: ` +
             `x=${x} y=${y} row=${row} col=${col} ` +
             `state=${this.mouse_handler}`);
+        if (this.mouse_handler.move == 'outside') return;
 
         // First, let's do an exhaustive search for all points within
         // EXHAUSTIVE_SEARCH_RADIUS of the current pixel.
