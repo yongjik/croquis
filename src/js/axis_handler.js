@@ -98,9 +98,9 @@ export class AxisHandler {
 
     // Remove all known ticks and re-create them, following new information sent
     // from the backend.
-    // Message type is either 'new_canvas_config' or 'axis_ticks'.
+    // Message type is either 'canvas_config' or 'axis_ticks'.
     update(msg_dict) {
-        if (msg_dict.msg == 'new_canvas_config') {
+        if (msg_dict.msg == 'canvas_config') {
             // Reset sequence #.
             this.last_seq = -1;
             this.next_seq = 0;
@@ -154,18 +154,13 @@ export class AxisHandler {
 
         const seq = this.next_seq++;
         this.inflight_reqs.set(seq, Date.now());
-        const req = {
-            config_id: tile_set.config_id,
-            zoom_level: tile_set.zoom_level,
-            axis_seq: seq,
-            x_offset: Math.round(tile_set.x_offset),
-            y_offset: Math.round(tile_set.y_offset),
-        };
-
         this.last_x_offset = Math.round(tile_set.x_offset);
         this.last_y_offset = Math.round(tile_set.y_offset);
 
-        this.ctxt.send('axis_req', req);
+        this.ctxt.send('axis_req', {
+            config: tile_set.current_canvas_config(),
+            axis_seq: seq,
+        });
     }
 
     // Forget in-flight requests that are too old.

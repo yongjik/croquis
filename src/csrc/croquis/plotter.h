@@ -53,11 +53,6 @@ class Plotter {
     optional<SelectionMap> sm_;
     bool show_called() const { return bool(sm_); }
 
-    // We use pointer to keep the object at the same place.
-    // TODO: We need to keep refcount on CanvasConfig and free the configs that
-    //       are no longer needed !!
-    std::vector<std::unique_ptr<CanvasConfig>> configs_;
-
     // Sequence number for the tiles sent back to FE.
     int tile_seq_no_ = 0;
 
@@ -111,17 +106,6 @@ class Plotter {
   public:
     Plotter() { }
 
-    // Used by _axis_req_handler().
-    CanvasConfig get_canvas_config(int config_id) {
-        std::unique_lock<std::mutex> lck(m_);
-        if (config_id >= 0 && config_id < configs_.size() &&
-            configs_.at(config_id) != nullptr) {
-            return *configs_.at(config_id);
-        }
-
-        return CanvasConfig(-1, 0, 0, 0.0, 0.0, 0.0, 0.0);
-    }
-
     // Wrapper function to instantiate and register a FigureData object.
     template<typename T, typename... Args>
     void add_figure_data(Args&&... args) {
@@ -141,26 +125,15 @@ class Plotter {
                          std::unique_ptr<FigureData> fd);
 
   public:
-    // Called from FE (1) when initializing, and (2) when the canvas size
-    // changes.
-    // We initialize a new canvas config and enqueue tasks to draw tiles.
+    // Create a new canvas config: called by FE message `canvas_config_req`.
+    // See messages.txt for details.
     //
-    // If we're resizing, the last four arguments indicate the current state of
-    // the canvas, so that the new canvas can show the same area.
-    void resize_handler(int width, int height,
-                        int config_id, int zoom_level,
-                        float x_offset, float y_offset);
-
-    // Create another config by zooming into the existing canvas config.
-    void zoom_req_handler(int config_id, int zoom_level,
-                          float px0, float py0, float px1, float py1);
-
-  private:
-    // Called by resize_handler() or zoom_req_handler(): initialize a new
-    // canvas config and launch tile computation.
-    // Must be called with mutex held.
-    void init_canvas(const std::unique_lock<std::mutex> &lck,
-                     const CanvasConfig *canvas);
+    // `old_config` is nullptr if it's a "reset" request.
+    // px0, py0, px1, py1 are meaningful only if `is_zoom` is true.
+    void create_canvas_config(
+             int new_config_id, int width, int height,
+             const CanvasConfig *old_config,
+             bool is_zoom, float px0, float py0, float px1, float py1);
 
   public:
     std::pair<bool *, size_t> init_selection_map();
@@ -187,7 +160,7 @@ class Plotter {
     //
     // `prio_coords` and `reg_coords` are vectors of length multiple of 3, made
     // of coordinates (tile row, tile col, seq_no).
-    void tile_req_handler(int config_id, int zoom_level, int item_id,
+    void tile_req_handler(const CanvasConfig *canvas, int item_id,
                           const std::vector<int> &prio_coords,
                           const std::vector<int> &reg_coords);
 
@@ -216,12 +189,6 @@ class Plotter {
     void draw_tile_task(const PlotRequest req,
                         const IntersectionResultSet<int64_t> *irs,
                         int row, int col);
-
-    // Must be called with mutex held.
-    CanvasConfig *add_canvas_config(
-                      const std::unique_lock<std::mutex> &lck,
-                      int w, int h,
-                      double x0, double y0, double x1, double y1);
 
     // Helper function to find atom indices.
     std::pair<int64_t, int64_t> get_atom_idxs(int item_id);

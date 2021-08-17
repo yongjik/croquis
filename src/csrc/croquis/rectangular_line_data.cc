@@ -40,10 +40,8 @@ void RectangularLineData::compute_intersection(
          const IntersectionResultSet<int64_t> *irs,
          IntersectionResult<int64_t> *result)
 {
-    const CanvasConfig *canvas = req.canvas;
-
     // Transformation from input coordinates to "tile coordinates".
-    CanvasConfig::Transform tr = canvas->get_tile_transform(req.zoom_level);
+    CanvasConfig::Transform tr = req.canvas.get_tile_transform();
 
     float line_width = req.is_highlight() ? highlight_line_width_ : line_width_;
     float tw = line_width / TILE_SIZE;
@@ -179,12 +177,11 @@ RectangularLineData::paint(ColoredBufferBase *tile, const PlotRequest &req,
 {
     if (!iter.has_next()) return iter;
 
-    const CanvasConfig *canvas = req.canvas;
     const float line_width =
         req.is_highlight() ? highlight_line_width_ : line_width_;
 
     // Transformation from input to pixel coordinates.
-    CanvasConfig::Transform tr = canvas->get_transform(req.zoom_level);
+    CanvasConfig::Transform tr = req.canvas.get_transform();
     tr.xbias -= col * TILE_SIZE;
     tr.ybias -= row * TILE_SIZE;
 

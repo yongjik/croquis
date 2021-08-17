@@ -47,14 +47,6 @@ export class Ctxt {
         this.canvas_id = canvas_id;
         this.canvas_main = document.querySelector('#' + canvas_id);
 
-        // TODO: This is confusing, as we also have TileSet.width/height.
-        //       Currently, Ctxt.width/height is updated when we *send* resize
-        //       request to BE; TileSet.width/height is updated when we get back
-        //       the `new_canvas_config` message.
-        //
-        //       We need a better way to handle window resize ...
-        this.width = this.height = null;
-
         // Hmm looks like we can't do this with vanilla JS ...
         // TODO: Check if there's some hook inside Jupyter?
         env.$('#' + canvas_id).on('remove', () => { this.cleanup_handler(); });
@@ -78,20 +70,12 @@ export class Ctxt {
         // Get the current window size and send it as part of the init
         // request.
         env.css_loaded.then(() => {
-            let canvas = this.get_canvas();
-            this.width = canvas.clientWidth;
-            this.height = canvas.clientHeight;
-            this.dbglog('Initial canvas width/height: ',
-                        'w=', this.width, 'h=', this.height);
-            console.log('Initial canvas width/height: ',
-                        'w=', this.width, 'h=', this.height);
-
-            this.send('resize', {'w': this.width, 'h': this.height});
+            this.tile_handler.tile_set.reset_canvas();
             this.tile_handler.search_handler(null);
 
             // Prepare the progress indicator to fire if BE takes too long.
             setTimeout(() => {
-                let bar = canvas.querySelector('.cr_progressbar');
+                let bar = this.get_canvas().querySelector('.cr_progressbar');
                 if (bar) bar.style.visibility = 'visible';
             }, PROGRESSBAR_TIMEOUT);
 
@@ -109,33 +93,14 @@ export class Ctxt {
             '(see developer console for details): ' + err;
     }
 
-    // Called when the window size *may* have changed: see the discussion at the
-    // top of this file about window.setInterval().
+    // Called when the window size *may* have changed: see the discussion on
+    // window_setInterval() inside croquis_loader.js.
     resize_handler() {
-        let canvas = this.get_canvas();
-        let width = canvas.clientWidth;
-        let height = canvas.clientHeight;
+        // Add 2px (width of the x axis).
+        this.canvas_main.querySelector('.cr_y_axis').style.height =
+            (this.get_canvas().clientHeight + 2) + 'px';
 
-        // Let's only consider the width for now: the height is adjusted
-        // according to the width.
-        // TODO: Add support for dynamically updating canvas size?
-        if (width == this.width) return;
-
-        this.width = width;
-        this.height = height;
-
-        let msg = {w: width, h: height};
-
-        let tile_set = this.tile_handler.tile_set;
-        if (tile_set.config_id != null) {
-            msg.config_id = tile_set.config_id;
-            msg.zoom_level = tile_set.zoom_level;
-            msg.x_offset = tile_set.x_offset;
-            msg.y_offset = tile_set.y_offset;
-        }
-
-        this.dbglog('Cell resized to width = ', width, ' height = ', height);
-        this.send('resize', msg);
+        this.tile_handler.tile_set.resize_canvas();
     }
 
     // Cleanup handler: tell the server that this canvas is gone.
@@ -163,24 +128,8 @@ export class Ctxt {
     //      this.dbglog('BE message received: ', msg_dict);
     //  }
 
-        if (msg_dict.msg == 'new_canvas_config') {
-            // For now, we only set the height: width follows the page
-            // layout, so `msg_dict.w` must equal the current canvas width,
-            // unless the user is continuously resizing the window.
-            if (this.width != msg_dict.w) {
-                console.log("Warning: width returned from BE doesn't match!");
-                // TODO: Now what?
-            }
-            this.height = msg_dict.h;
-            this.get_canvas().style.height = msg_dict.h + 'px';
-
-            // Add 2px (width of the x axis).
-            this.canvas_main.querySelector('.cr_y_axis').style.height =
-                (msg_dict.h + 2) + 'px';
-
+        if (msg_dict.msg == 'canvas_config') {
             this.tile_handler.register_canvas_config(msg_dict);
-
-            // TODO: Handle msg_dict.x0, y0, x1, y1.
         }
         else if (msg_dict.msg == 'axis_ticks') {
             this.tile_handler.axis_handler.update(msg_dict);

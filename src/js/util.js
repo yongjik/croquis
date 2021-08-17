@@ -29,20 +29,6 @@ export function get_timestamp_str() {
 export function hide(elem) { elem.style.display = 'none'; }
 export function unhide(elem) { elem.style.display = null; }
 
-// Counterpart of the C++ CanvasConfig class.
-// TODO: Do we need it?
-class CanvasConfig {
-    constructor(id, w, h, x0, y0, x1, y1) {
-        this.id = id;  // Config ID.
-        this.w = w;
-        this.h = h;
-        this.x0 = x0;
-        this.y0 = y0;
-        this.x1 = x1;
-        this.y1 = y1;
-    }
-}
-
 // Utility class for managing a popup box that closes itself when the user
 // clicks somewhere else.
 // cf. https://stackoverflow.com/a/3028037

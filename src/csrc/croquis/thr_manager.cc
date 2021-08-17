@@ -454,8 +454,8 @@ Task *ThrManager::dequeue_task(WorkThr *wthr)
 
 bool ThrManager::send_msg(uintptr_t obj_id,
                           const std::vector<std::string> &dict,
-                          std::unique_ptr<croquis::MessageData> data1,
-                          std::unique_ptr<croquis::MessageData> data2)
+                          std::unique_ptr<MessageData> data1,
+                          std::unique_ptr<MessageData> data2)
 {
     py::gil_scoped_acquire lck;
     // Seems like this will transfer ownership to Python.

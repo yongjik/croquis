@@ -59,13 +59,18 @@ PYBIND11_MODULE(_csrc, m) {
 
     py::class_<croquis::CanvasConfig>(m, "CanvasConfig")
         .def(py::init<int, int, int, double, double, double, double>())
+        .def(py::init<int, int, int, double, double, double, double,
+                      int, int, int>())
         .def_readonly("id", &croquis::CanvasConfig::id)
         .def_readonly("w", &croquis::CanvasConfig::w)
         .def_readonly("h", &croquis::CanvasConfig::h)
         .def_readonly("x0", &croquis::CanvasConfig::x0)
         .def_readonly("y0", &croquis::CanvasConfig::y0)
         .def_readonly("x1", &croquis::CanvasConfig::x1)
-        .def_readonly("y1", &croquis::CanvasConfig::y1);
+        .def_readonly("y1", &croquis::CanvasConfig::y1)
+        .def_readonly("zoom_level", &croquis::CanvasConfig::zoom_level)
+        .def_readonly("x_offset", &croquis::CanvasConfig::x_offset)
+        .def_readonly("y_offset", &croquis::CanvasConfig::y_offset);
 
     py::class_<croquis::Plotter>(m, "Plotter")
         .def(py::init<>())
@@ -103,12 +108,8 @@ PYBIND11_MODULE(_csrc, m) {
                 return p.get_sm_version();
             }
         )
-        .def("resize_handler", &croquis::Plotter::resize_handler,
+        .def("create_canvas_config", &croquis::Plotter::create_canvas_config,
              py::call_guard<py::gil_scoped_release>())
-        .def("zoom_req_handler", &croquis::Plotter::zoom_req_handler,
-             py::call_guard<py::gil_scoped_release>())
-        // Called by _axis_req_handler() to remember the current canvas config.
-        .def("get_canvas_config", &croquis::Plotter::get_canvas_config)
         .def("init_selection_map", [](croquis::Plotter &p) {
             auto result = p.init_selection_map();
             return py::memoryview::from_buffer(

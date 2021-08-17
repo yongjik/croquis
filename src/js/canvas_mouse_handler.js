@@ -143,16 +143,14 @@ export class CanvasMouseHandler {
                         'Selected area too small, ignoring ...');
                 }
                 else {
-                    const req = {
-                        config_id: tile_set.config_id,
-                        zoom_level: tile_set.zoom_level,
-                        x0: this.start_x - tile_set.x_offset,
-                        y0: this.start_y - tile_set.y_offset,
-                        x1: x - tile_set.x_offset,
-                        y1: y - tile_set.y_offset,
+                    const zoom = {
+                        px0: this.start_x - tile_set.x_offset,
+                        py0: this.start_y - tile_set.y_offset,
+                        px1: x - tile_set.x_offset,
+                        py1: y - tile_set.y_offset,
                     };
-                    this.replayer.log('Sending zoom request:', req);
-                    this.parent.ctxt.send('zoom_req', req);
+                    this.replayer.log('Sending zoom request:', zoom);
+                    tile_set.send_zoom_req(zoom);
                 }
             }
             else if (this.btn == 'pan' && prev_move != 'outside') {

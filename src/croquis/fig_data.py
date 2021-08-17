@@ -39,20 +39,19 @@ class FigData(object):
         return [f'{c}:{self.marker_size}:{self.line_width}' for c in colors]
 
     # Get the coordinate of the nearest point currently visible on the canvas.
-    def get_nearest_pt(self, parent,
-                       canvas_config, zoom_level, x_offset, y_offset,
-                       mouse_x, mouse_y, item_id):
+    def get_nearest_pt(self, parent, canvas_config, mouse_x, mouse_y, item_id):
         c = canvas_config
         X, Y = self.get_pts(item_id)
 
         # Compute pixel coordinates: see the comments for CanvasConfig.
-        Z = np.power(1.5, zoom_level)
+        Z = np.power(1.5, c.zoom_level)
         px = (c.w - 1) * (Z * (X - (c.x0 + c.x1) / 2) / (c.x1 - c.x0) + 0.5)
         py = (c.h - 1) * (Z * (Y - (c.y0 + c.y1) / 2) / (c.y0 - c.y1) + 0.5)
 
-        dist2 = (mouse_x - x_offset - px) ** 2 + (mouse_y - y_offset - py) ** 2
-        ipx = np.rint(px).astype(np.int) + x_offset
-        ipy = np.rint(py).astype(np.int) + y_offset
+        dist2 = (mouse_x - c.x_offset - px) ** 2 + \
+                (mouse_y - c.y_offset - py) ** 2
+        ipx = np.rint(px).astype(np.int) + c.x_offset
+        ipy = np.rint(py).astype(np.int) + c.y_offset
         in_canvas, = np.where(
             (0 <= ipx) & (ipx < c.w) & (0 <= ipy) & (ipy < c.h))
         if len(in_canvas) == 0: return None  # No data!

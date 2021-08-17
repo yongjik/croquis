@@ -71,16 +71,22 @@ class NearestPts {
     // information because the "nearest point" depends on what's currently
     // visible on the canvas.
     insert(msg_dict) {
-        const keys = ['config_id', 'zoom_level', 'x_offset', 'y_offset',
-                      'mouse_x', 'mouse_y', 'item_id'];
-        const key = keys.map((k) => msg_dict[k]).join(':');
+        const keys = [
+            msg_dict.config.config_id,
+            msg_dict.config.zoom_level,
+            msg_dict.config.x_offset,
+            msg_dict.config.y_offset,
+            msg_dict.mouse_x,
+            msg_dict.mouse_y,
+            msg_dict.item_id
+        ];
         const data = {
             data_x: msg_dict.data_x,
             data_y: msg_dict.data_y,
             screen_x: msg_dict.screen_x,
             screen_y: msg_dict.screen_y,
         };
-        this.cache.insert(key, data);
+        this.cache.insert(keys.join(':'), data);
     }
 
     get(config_id, zoom_level, x_offset, y_offset, mouse_x, mouse_y, item_id) {
@@ -106,6 +112,7 @@ export class TileHandler {
 <div class="cr_y_axis"></div>
 <div class="cr_canvas_plus_x_axis">
   <div class="cr_canvas">
+    <div class="cr_height_adjuster"></div>
     <div class="cr_progressbar">Please wait, the graph is being generated ...</div>
     <div class="cr_inner"></div>
     <div class="cr_foreground"></div>
@@ -180,6 +187,16 @@ export class TileHandler {
             ['.cr_progressbar, .cr_inner, .cr_foreground, ' +
                  '.cr_grid, .cr_select_area',
              'position: absolute; left: 0px; top: 0px;'],
+
+            // Padding bottom hack: give .cr_canvas a minimum height based on
+            // its weight (times a fixed aspect ratio), but since it's part of a
+            // flex box, it will optionally stretch to fill the space.
+            //
+            // Based on: https://www.smashingmagazine.com/2013/09/responsive-images-performance-problem-case-study/#the-padding-bottom-hack
+            //
+            // TODO: Support different aspect ratio!!
+            ['.cr_height_adjuster', 'height: 0px; padding-bottom: 60%;'],
+            ['.cr_canvas', 'height: auto;'],
         ]);
 
         // Used when replaying tile events, to keep context.
@@ -235,7 +252,7 @@ export class TileHandler {
             document.querySelector(`#${ctxt.canvas_id} .cr_ctrl_panel`);
         let qs_ctrl = (selector) => ctrl_elem.querySelector(selector);
         qs_ctrl('.cr_home_btn').addEventListener('click', (ev) => {
-            this.ctxt.send('resize', {w: this.ctxt.width, h: this.ctxt.height});
+            this.tile_set.reset_canvas();
         });
         qs_ctrl('.cr_zoom_in_btn').addEventListener('click', (ev) => {
             this.tile_set.zoom_level++;
@@ -358,12 +375,13 @@ export class TileHandler {
     register_canvas_config(msg_dict) {
         // TODO: Event replay is not written yet.
         this.replayer.record_event('canvas', msg_dict);
-        this.tile_set.add_config(msg_dict);
 
-        // Cancel any selection/zoom going on, just in case.
-        this.mouse_handler.reset();
+        if (this.tile_set.add_config(msg_dict)) {
+            // Cancel any selection/zoom going on, just in case.
+            this.mouse_handler.reset();
 
-        this.axis_handler.update(msg_dict);
+            this.axis_handler.update(msg_dict);
+        }
     }
 
     // Called by Ctxt when we receive a new tile from BE: we add the tile to
@@ -437,8 +455,7 @@ export class TileHandler {
 
         this.ctxt.send('tile_req', {
             ack_seqs: ack_seqs,
-            config_id: config_id,
-            zoom_level: zoom_level,
+            config: this.tile_set.current_canvas_config(),
             items: [{id: item_id, prio: [`${row}:${col}:${next_seq}`], reg: []}]
         });
     }
@@ -803,8 +820,7 @@ export class TileHandler {
         this.ack_seqs = [];
         return {
             ack_seqs: ack_seqs,
-            config_id: this.tile_set.config_id,
-            zoom_level: this.tile_set.zoom_level,
+            config: this.tile_set.current_canvas_config(),
             items: Array.from(items.values()),
             throttled: throttled,
         };
@@ -930,10 +946,7 @@ export class TileHandler {
                 this.tooltip.textContent = best_tile.label;
 
                 this.ctxt.send('pt_req', {
-                    config_id: this.tile_set.config_id,
-                    zoom_level: this.tile_set.zoom_level,
-                    x_offset: Math.round(this.tile_set.x_offset),
-                    y_offset: Math.round(this.tile_set.y_offset),
+                    config: this.tile_set.current_canvas_config(),
                     mouse_x: ix,
                     mouse_y: iy,
                     item_id: best_item_id,
@@ -1277,8 +1290,7 @@ export class TileHandler {
         this.ack_seqs = [];
         return {
             ack_seqs: ack_seqs,
-            config_id: this.tile_set.config_id,
-            zoom_level: this.tile_set.zoom_level,
+            config: this.tile_set.current_canvas_config(),
             items: [{version: sm_version, prio: buf, reg: []}],
             throttled: false,
         };

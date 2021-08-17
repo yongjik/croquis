@@ -38,16 +38,12 @@ struct Range2D {
 // Helper class to keep context for multiple tasks easily.
 // This structure is passed by value for tasks, so it must be small.
 struct PlotRequest {
-    int sm_version;
-    const CanvasConfig *canvas;
-    int zoom_level;
-    int item_id;  // -1 to draw all.
+    const int sm_version;
+    const CanvasConfig canvas;
+    const int item_id;  // -1 to draw all.
 
-    PlotRequest(int sm_version,
-                const CanvasConfig *canvas, int zoom_level, int item_id)
-        : sm_version(sm_version),
-          canvas(canvas), zoom_level(zoom_level), item_id(item_id)
-    { }
+    PlotRequest(int sm_version, const CanvasConfig canvas, int item_id)
+        : sm_version(sm_version), canvas(canvas), item_id(item_id) { }
 
     bool is_highlight() const { return (item_id != -1); }
 };

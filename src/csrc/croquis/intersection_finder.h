@@ -15,8 +15,6 @@
 
 namespace croquis {
 
-class CanvasConfig;
-
 // Forward declaration.
 template<typename DType> class IntersectionResultSet;
 

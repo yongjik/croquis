@@ -2,6 +2,7 @@
 
 import { tile_key } from './tile.js';
 import {
+    assert,
     LRUCache,
     TILE_SIZE
 } from './util.js';
@@ -10,22 +11,36 @@ const TILE_CACHE_MAXSIZE = 500;
 
 export class TileSet {
     constructor(ctxt) {
-        // Canvas is not initialized yet.
-        this.width = this.height = null;
+        this.ctxt = ctxt;
+        this.canvas_id = ctxt.canvas_id;
+        this.canvas = document.querySelector(`#${this.canvas_id} .cr_canvas`);
+        this.inner_div = this.canvas.querySelector('.cr_inner');
+        this.fg = this.canvas.querySelector('.cr_foreground');
 
-        let canvas = document.querySelector(`#${ctxt.canvas_id} .cr_canvas`);
-        this.inner_div = canvas.querySelector('.cr_inner');
-        this.fg = canvas.querySelector('.cr_foreground');
+        // Canvas config values: they're not initialized yet.
+        {
+            this.config_id = -1;
+            this.width = this.height = null;
+            this.x0 = this.y0 = this.x1 = this.y1 = null;
+            this.zoom_level = 0;
 
-        this.canvas_id = canvas.id;
-        this.configs = {};  // TODO: Do we need this?
+            // Panning offset, using screen coordinate.  E.g., if offset is (10, 3),
+            // then the tiles are shifted 10 pixels to the right and 3 pixels down.
+            this.x_offset = this.y_offset = 0;
+
+            // The last requested canvas config: x0/y0/x1/y1 are not yet
+            // available because they're computed by BE.
+            this.last_config_req = {
+                config_id: -1,
+                width: null,
+                height: null,
+            };
+        }
 
         // Current `SelectionMap` version: always even.
         // Incremented by 2 whenever selection changes.
         this.sm_version = 0;
 
-        this.config_id = null;  // No canvas config available yet.
-        this.zoom_level = 0;
         this.highlight_item_id = null;
 
         // Currently there are two ways highlight can be triggered: by hovering
@@ -37,14 +52,6 @@ export class TileSet {
         // When highlight is off, this value should be also `null`.
         this.highlight_trigger = null;
 
-        // Panning offset, using screen coordinate.  E.g., if offset is (10, 3),
-        // then the tiles are shifted 10 pixels to the right and 3 pixels down.
-        // TODO: Should we move the whole cr_inner/cr_foreground instead of
-        //       moving individual tiles?  During panning, we may end up only
-        //       moving some tiles and it would look awful ...
-        this.x_offset = 0;
-        this.y_offset = 0;
-
         // Collection of tiles currently being shown.
         this.visible_tiles = new Map();
 
@@ -54,17 +61,151 @@ export class TileSet {
             (oldv, newv) => oldv.sm_version < newv.sm_version);
     }
 
+    // TODO: Too much duplicate code among reset_canvas(), resize_canvas(), and
+    //       send_zoom_req() !!
+
+    // Send the `canvas_config_req` message to reset the canvas.
+    reset_canvas() {
+        const new_config_id = this.last_config_req.config_id + 1;
+        const w = Math.round(this.canvas.clientWidth);
+        const h = Math.round(this.canvas.clientHeight);
+        console.log(`Reset canvas ${this.canvas_id} ` +
+                    `config_id=${new_config_id} w=${w} h=${h}`);
+
+        this.last_config_req = {
+            config_id: new_config_id,
+            width: w,
+            height: h,
+        };
+
+        this.ctxt.send('canvas_config_req', {
+            config_id: new_config_id,
+            w: w,
+            h: h,
+            how: 'reset'
+        });
+    }
+
+    // Send the `canvas_config_req` message when the canvas was resized.
+    resize_canvas() {
+        const w = Math.round(this.canvas.clientWidth);
+        const h = Math.round(this.canvas.clientHeight);
+
+        if (w == this.last_config_req.width &&
+            h == this.last_config_req.height) {
+            // console.log(`Not sending resize canvas msg ${this.canvas_id} ` +
+            //             `size already matches w=${w} h=${h}.`);
+            return;
+        }
+
+        const new_config_id = this.last_config_req.config_id + 1;
+        console.log(`Resize canvas ${this.canvas_id} ` +
+                    `config_id=${new_config_id} w=${w} h=${h}`);
+
+        this.last_config_req = {
+            config_id: new_config_id,
+            width: w,
+            height: h,
+        };
+
+        if (this.has_valid_config()) {
+            this.ctxt.send('canvas_config_req', {
+                config_id: new_config_id,
+                w: w,
+                h: h,
+                how: 'resize',
+                old_config: this.current_canvas_config(),
+            });
+        }
+        else {
+            console.log('No valid config yet, asking for reset ...');
+            this.ctxt.send('canvas_config_req', {
+                config_id: new_config_id,
+                w: w,
+                h: h,
+                how: 'reset',
+            });
+        }
+    }
+
+    // Send zoom request.
+    send_zoom_req(zoom) {
+        if (!this.has_valid_config()) {
+            console.log("Cannot resize: doesn't have a valid config yet!");
+            return;
+        }
+
+        const new_config_id = this.last_config_req.config_id + 1;
+        const w = Math.round(this.canvas.clientWidth);
+        const h = Math.round(this.canvas.clientHeight);
+        console.log(`Zoom canvas ${this.canvas_id} ` +
+                    `config_id=${new_config_id} w=${w} h=${h}`);
+
+        this.last_config_req = {
+            config_id: new_config_id,
+            width: w,
+            height: h,
+        };
+
+        this.ctxt.send('canvas_config_req', {
+            config_id: new_config_id,
+            w: w,
+            h: h,
+            how: 'zoom',
+            old_config: this.current_canvas_config(),
+            zoom: zoom,  // Contains px0/py0/px1/py1 in pixel coordinates.
+        });
+    }
+
+    // Check if we have a valid canvas config.
+    has_valid_config() {
+        return this.x0 != null;
+    }
+
+    // Convert the current shown canvas config to CanvasConfigSubMessage (see
+    // messages.txt).
+    current_canvas_config() {
+        return {
+            config_id: this.config_id,
+            w: this.width,
+            h: this.height,
+            x0: this.x0,
+            y0: this.y0,
+            x1: this.x1,
+            y1: this.y1,
+            zoom_level: this.zoom_level,
+            x_offset: Math.round(this.x_offset),
+            y_offset: Math.round(this.y_offset),
+        };
+    }
+
+    // Handle the `canvas_config` message returned by BE.
+    // Return true if we change the canvas config.
     add_config(msg) {
-        this.config_id = msg.config_id;
+        const config = msg.config;
+        if (this.config_id >= msg.config_id) {
+            console.log(`canvas_config message contains stale config ID ` +
+                        `${msg.config_id}: we already have ${this.config_id}.`);
+            return false;
+        }
+
+        this.config_id = config.config_id;
+        this.height = config.h;
+        this.width = config.w;
+
+        this.x0 = config.x0;
+        this.y0 = config.y0;
+        this.x1 = config.x1;
+        this.y1 = config.y1;
+
+        assert(config.zoom_level == 0 &&
+               config.x_offset == 0 && config.y_offset == 0);
+
         this.zoom_level = 0;
-        this.configs[msg.config_id] = msg;
-            // TODO: use CanvasConfig class above?
-
-        this.height = msg.h;
-        this.width = msg.w;
-
         this.x_offset = 0;
         this.y_offset = 0;
+
+        return true;
     }
 
     // Return true if we have this tile.

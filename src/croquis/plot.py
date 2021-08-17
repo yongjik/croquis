@@ -12,6 +12,18 @@ from . import axis_util, comm, display, fig_data, png_util, thr_manager
 
 logger = logging.getLogger(__name__)
 
+# Helper function.
+def _json_get_floats(d, keys):
+    return [float(d[k]) for k in keys.split()]
+
+# Helper function used inside Plotter: parse CanvasConfigSubMessage sent from
+# FE.
+def _parse_canvas_config(json_data):
+    return _csrc.CanvasConfig(
+        json_data['config_id'], json_data['w'], json_data['h'],
+        *_json_get_floats(json_data, 'x0 y0 x1 y1'),
+        json_data['zoom_level'], json_data['x_offset'], json_data['y_offset'])
+
 class Plotter(object):
     # TODO: Also call add() if kwargs contains X, Y, etc.
     def __init__(self, **kwargs):
@@ -32,7 +44,10 @@ class Plotter(object):
 
         # I don't know if we can guarantee that requests are called in order: so
         # we remember out-of-order requests so that we can apply them in order.
-        # Key is the corresponding `sm_vesrion`.
+        #
+        # Key is the corresponding `sm_version`.
+        # Value is a list of triples (msgdata, canvas_config, item): see
+        # _tile_req_handler().
         self.ooo_updates = {}
         self.ooo_tile_reqs = collections.defaultdict(list)
 
@@ -64,9 +79,9 @@ class Plotter(object):
 
         comm.comm_manager.register_plot(self.disp.canvas_id, self)
 
-        self.disp.register_handler('resize', self._resize_handler)
+        self.disp.register_handler('canvas_config_req',
+                                   self._canvas_config_req_handler)
         self.disp.register_handler('cell_fini', self._cell_fini_handler)
-        self.disp.register_handler('zoom_req', self._zoom_req_handler)
         self.disp.register_handler('axis_req', self._axis_req_handler)
         self.disp.register_handler('tile_req', self._tile_req_handler)
         self.disp.register_handler('pt_req', self._pt_req_handler)
@@ -77,15 +92,37 @@ class Plotter(object):
         self.disp.show()
 
     # Called when the canvas is ready or its size changes.
-    def _resize_handler(self, canvas_id, msgtype, msg):
+    def _canvas_config_req_handler(self, canvas_id, msgtype, msg):
         data = msg['content']['data']
+        new_config_id = data['config_id']
         width, height = data['w'], data['h']
-        config_id = data.get('config_id', -1)
-        zoom_level = data.get('zoom_level', 0)
-        x_offset = data.get('x_offset', -1)
-        y_offset = data.get('y_offset', -1)
-        self._C.resize_handler(
-            width, height, config_id, zoom_level, x_offset, y_offset)
+
+        how = data['how']
+
+        # Sanity check.
+        if how == 'reset':
+            assert 'old_config' not in data
+            assert 'zoom' not in data
+        elif how == 'resize':
+            assert 'old_config' in data
+            assert 'zoom' not in data
+        elif how == 'zoom':
+            assert 'old_config' in data
+            assert 'zoom' in data
+        else:
+            assert None
+
+        old_config = None
+        if 'old_config' in data:
+            old_config = _parse_canvas_config(data['old_config'])
+
+        zoom_args = [False, 0.0, 0.0, 0.0, 0.0]
+        if 'zoom' in data:
+            zoom_args = [True] + \
+                        _json_get_floats(data['zoom'], 'px0 py0 px1 py1')
+
+        self._C.create_canvas_config(
+            new_config_id, width, height, old_config, *zoom_args)
 
     # Called by C++ code via callback mechanism.
     def _send_msg(self, json_data, data1, data2):
@@ -112,16 +149,14 @@ class Plotter(object):
 
             logger.debug('PNG data created %d bytes', len(data1))
 
-        if msgtype == 'new_canvas_config':
-            # This isn't clean, but we want to have the same API as inside
-            # _axis_req_handler(), and we can't call _C.get_canvas_config() here
-            # because we're being called from C++ code: so we already hold
-            # Plotter::m_ here.
-            canvas_config = _csrc.CanvasConfig(
-                json_data['config_id'], json_data['w'], json_data['h'],
-                float(json_data['x0']), float(json_data['y0']),
-                float(json_data['x1']), float(json_data['y1']))
-            axis_util.create_labels(json_data, canvas_config, 0, self.axis_config)
+        if msgtype == 'CanvasConfigSubMessage':
+            # C++ code sends this when a new canvas config is generated.  We
+            # re-package it into a `canvas_config` message.
+            msgtype = 'canvas_config'
+            canvas_config = _parse_canvas_config(json_data)
+            json_data = {'config': json_data}
+            axis_util.create_labels(
+                json_data, canvas_config, 0, self.axis_config)
             logger.debug('Added axis data to message: %s', json_data)
 
         comm.comm_manager.send(
@@ -135,32 +170,20 @@ class Plotter(object):
         comm.comm_manager.deregister_handler(canvas_id)
         self._C = None
 
-    def _zoom_req_handler(self, canvas_id, msgtype, msg):
-        msgdata = msg['content']['data']
-        self._C.zoom_req_handler(
-            msgdata['config_id'], msgdata['zoom_level'],
-            msgdata['x0'], msgdata['y0'], msgdata['x1'], msgdata['y1'])
-
     def _axis_req_handler(self, canvas_id, msgtype, msg):
         # For "axis_req", we don't have a C++ handler: we use `axis_util` to
         # generate reply here.
         msgdata = msg['content']['data']
-        config_id = msgdata['config_id']
-
-        canvas_config = self._C.get_canvas_config(config_id)
-        if canvas_config.id != config_id:
-            logger.warn('_axis_req_handler: unknown config_id %d, ignored!',
-                        config_id)
-            return
+        canvas_config = _parse_canvas_config(msgdata['config'])
 
         json_data = {
-            'config_id': msgdata['config_id'],
+            'config_id': canvas_config.id,
             'axis_seq': msgdata['axis_seq'],
-            'x_offset': msgdata['x_offset'],
-            'y_offset': msgdata['y_offset'],
+            'x_offset': canvas_config.x_offset,
+            'y_offset': canvas_config.y_offset,
         }
         axis_util.create_labels(
-            json_data, canvas_config, msgdata['zoom_level'], self.axis_config)
+            json_data, canvas_config, canvas_config.zoom_level, self.axis_config)
 
         comm.comm_manager.send(
             self.disp.canvas_id, 'axis_ticks', **json_data)
@@ -169,29 +192,16 @@ class Plotter(object):
     def _tile_req_handler(self, canvas_id, msgtype, msg):
         msgdata = msg['content']['data']
         # logger.info('Received tile req: %s', msgdata)
+        canvas_config = _parse_canvas_config(msgdata['config'])
 
         ack_seqs = msgdata['ack_seqs']
         if len(ack_seqs) > 0: self._C.acknowledge_seqs(ack_seqs)
-
-        # Given a list of coordinates such as ['0:1:100', '0:2:101'], transform
-        # it into a simple list of integers, i.e., [0, 1, 100, 0, 2 101].
-        def _flatten(coords):
-            retval = []
-            for coord in coords:
-                row, col, seq_no = coord.split(':')
-                retval += [int(row), int(col), int(seq_no)]
-            return retval
-
-        def _call_cpp_handler(item, item_id):
-            self._C.tile_req_handler(
-                msgdata['config_id'], msgdata['zoom_level'],
-                item.get('id', -1), _flatten(item['prio']), _flatten(item['reg']))
 
         # Call the C++ handler for each item in the request.
         for item in msgdata['items']:
             if 'id' in item:
                 assert 'version' not in item
-                self._tile_req_helper(msgdata, item)
+                self._tile_req_helper(msgdata, canvas_config, item)
                 continue
 
             # Regular tile request (e.g., after selection update): check if the
@@ -201,29 +211,25 @@ class Plotter(object):
             with self.selection_map_lock:
                 curr_version = self._C.sm_version
                 if req_version > curr_version:
-                    self.ooo_tile_reqs[req_version].append((msgdata, item))
+                    self.ooo_tile_reqs[req_version].append(
+                        (msgdata, canvas_config, item))
                     continue
 
-            self._tile_req_helper(msgdata, item)
+            self._tile_req_helper(msgdata, canvas_config, item)
 
     # Find the point nearest to the given screen coordinate.
     def _pt_req_handler(self, canvas_id, msgtype, msg):
         msgdata = msg['content']['data']
-        config_id = msgdata['config_id']
+        canvas_config = _parse_canvas_config(msgdata['config'])
         item_id = msgdata['item_id']
 
-        canvas_config = self._C.get_canvas_config(config_id)
         resp = self._get_figdata(item_id).get_nearest_pt(
-            self,
-            canvas_config, msgdata['zoom_level'],
-            msgdata['x_offset'], msgdata['y_offset'],
-            msgdata['mouse_x'], msgdata['mouse_y'],
-            item_id)
+            self, canvas_config,
+            msgdata['mouse_x'], msgdata['mouse_y'], item_id)
         if resp is None: return
 
         # Echo back the request parameters.
-        for key in ('config_id zoom_level x_offset y_offset '
-                    'mouse_x mouse_y item_id').split():
+        for key in ('config mouse_x mouse_y item_id').split():
             resp[key] = msgdata[key]
 
         comm.comm_manager.send(self.disp.canvas_id, 'pt', **resp)
@@ -302,8 +308,8 @@ class Plotter(object):
 
         # Call tile requests that were pending until the requested version was
         # reached.
-        for msg, item in pending_tile_reqs:
-            self._tile_req_helper(msg, item)
+        for msg, canvas_config, item in pending_tile_reqs:
+            self._tile_req_helper(msg, canvas_config, item)
 
     # TODO: In the methods above, we use `msgdata` to the data sent by FE.
     #       Below, we're using `msg` - this is confusing!
@@ -348,7 +354,7 @@ class Plotter(object):
     #
     # `msg` is a message of msgtype 'tile_req', and `item` is an element of
     # msg['items'].
-    def _tile_req_helper(self, msg, item):
+    def _tile_req_helper(self, msg, canvas_config, item):
         # Given a list of coordinates such as ['0:1:100', '0:2:101'], transform
         # it into a simple list of integers, i.e., [0, 1, 100, 0, 2 101].
         def _flatten(coords):
@@ -358,9 +364,8 @@ class Plotter(object):
                 retval += [int(row), int(col), int(seq_no)]
             return retval
 
-        self._C.tile_req_handler(
-            msg['config_id'], msg['zoom_level'],
-            item.get('id', -1), _flatten(item['prio']), _flatten(item['reg']))
+        self._C.tile_req_handler(canvas_config, item.get('id', -1),
+                                 _flatten(item['prio']), _flatten(item['reg']))
 
     # Helper function for finding a FigData that contains the given item.
     def _get_figdata(self, item_id):

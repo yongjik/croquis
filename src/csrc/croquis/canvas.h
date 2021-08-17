@@ -114,7 +114,7 @@ namespace croquis {
 // to come back to the previous coordinates, in order to reuse tiles.
 //
 // Toward this goal, we add zoom level and offset to each tile.  As long as the
-// user uses standard zoom/pan functionality, they will be stay inside the same
+// user uses standard zoom/pan buttons, they will be stay inside the same
 // CanvasConfig.
 //
 // In the simplest case, given the data (input) coordinate `x`, the
@@ -148,13 +148,24 @@ class CanvasConfig {
     int w, h;  // width and height of the canvas, in pixels.
     double x0, y0, x1, y1;
 
+    // Technically, these are not part of the "canvas config" but rather the
+    // exact current state of FE: changing these values won't change the config
+    // ID.  But because we frequently need these values as well, it's convenient
+    // to keep them in the same class.
+    //
+    // See messages.txt for details.
+    int zoom_level;
+    int x_offset, y_offset;  // Offset after panning, in pixel coordinates.
+
     CanvasConfig(int id, int w, int h,
-                 double x0, double y0, double x1, double y1)
-        : id(id), w(w), h(h), x0(x0), y0(y0), x1(x1), y1(y1) { }
+                 double x0, double y0, double x1, double y1,
+                 int zoom_level = 0, int x_offset = 0, int y_offset = 0)
+        : id(id), w(w), h(h), x0(x0), y0(y0), x1(x1), y1(y1),
+          zoom_level(zoom_level), x_offset(x_offset), y_offset(y_offset) { }
 
     struct Point { double x, y; };
 
-    Point get_data_coord(int zoom_level, double px, double py) const {
+    Point get_data_coord(double px, double py) const {
         Point pt;
 
         double inv_zoom = pow(ZOOM_FACTOR, -zoom_level);
@@ -168,7 +179,7 @@ class CanvasConfig {
         float xscale, xbias, yscale, ybias;
     };
 
-    Transform get_transform(int zoom_level) const {
+    Transform get_transform() const {
         Transform t;
 
         double zoom = pow(ZOOM_FACTOR, zoom_level);
@@ -192,7 +203,7 @@ class CanvasConfig {
     // Combining them,
     //      xscale = (Z * (w-1)) / (TS * (x1-x0)),
     //      tx = xscale * x - xscale * (x0+x1)/2 + w / (2*TS) - 1/2.
-    Transform get_tile_transform(int zoom_level) const {
+    Transform get_tile_transform() const {
         Transform t;
 
         double zoom = pow(ZOOM_FACTOR, zoom_level);

@@ -42,12 +42,14 @@ class WorkThr {
 
 class ThrManager {
   public:
+    // A generic callback, telling the Python code to send the data back to FE.
+    //
     // Arguments are: key (address of the sender object);
     //                data as json string;
     //                optional binary data (up to two).
     typedef std::function<bool(uintptr_t, const std::vector<std::string> &,
-                               std::unique_ptr<croquis::MessageData>,
-                               std::unique_ptr<croquis::MessageData>)>
+                               std::unique_ptr<MessageData>,
+                               std::unique_ptr<MessageData>)>
             PyCallback_t;
 
     const int nthreads;
@@ -158,13 +160,13 @@ class ThrManager {
     // {"msg=test_message", "foo=hello", "#bar=3"}.
     // (Use '#' in front of the key to create a numeric value.)
     bool send_msg(uintptr_t obj_id, const std::vector<std::string> &dict,
-                  std::unique_ptr<croquis::MessageData> data1 = nullptr,
-                  std::unique_ptr<croquis::MessageData> data2 = nullptr);
+                  std::unique_ptr<MessageData> data1 = nullptr,
+                  std::unique_ptr<MessageData> data2 = nullptr);
 
     template<typename T>
     bool send_msg(const T *obj, const std::vector<std::string> &dict,
-                  std::unique_ptr<croquis::MessageData> data1 = nullptr,
-                  std::unique_ptr<croquis::MessageData> data2 = nullptr) {
+                  std::unique_ptr<MessageData> data1 = nullptr,
+                  std::unique_ptr<MessageData> data2 = nullptr) {
         return send_msg((uintptr_t) obj, dict,
                         std::move(data1), std::move(data2));
     }
