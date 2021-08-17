@@ -68,8 +68,13 @@ void log(const char *file, int line, const std::string &s)
     // TODO: Support level, and write important messages to stderr!
     // write(2, log_line.c_str(), log_line.size());
 
-    if (log_fd_ != -1)
+    if (log_fd_ != -1) {
+        // Write to log_fd_, ignore any write errors.
+#if defined(__GNUC__) && !defined(__clang__)
+#   pragma GCC diagnostic ignored "-Wunused-result"
+#endif
         write(log_fd_, log_line.c_str(), log_line.size());
+    }
 }
 
 }  // namespace util
