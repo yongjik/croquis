@@ -18,6 +18,11 @@ import {
     ZOOM_FACTOR,
 } from './util.js';
 
+// Axis area dimensions.
+const AXIS_WIDTH = 2;  // pixels
+const X_AXIS_AREA_HEIGHT = 30;  // pixels
+const Y_AXIS_AREA_WIDTH = 60;  // pixels
+
 // TODO: The highlight algorithm is too complicated: we can probably remove some
 //       part without issues.
 const HISTORY_MIN_STEP_MSEC = 5.0;
@@ -107,9 +112,9 @@ export class TileHandler {
         //       Should refactor code so that each part is handled by its own
         //       class.
         parent_elem.innerHTML = `
-<!-- The height of cr_y_axis must be manually adjusted to match (canvas
-     height) + (width of x axis line).  -->
-<div class="cr_y_axis"></div>
+<div class="cr_y_axis_container">
+  <div class="cr_y_axis"></div>
+</div>
 <div class="cr_canvas_plus_x_axis">
   <div class="cr_canvas">
     <div class="cr_height_adjuster"></div>
@@ -159,28 +164,40 @@ export class TileHandler {
         // NOTE: div.cr_y_axis's height should be (canvas height) + 2px (= width
         //       of x axis).
         apply_flex(parent_elem, 'row', [
-            ['.cr_y_axis', '0 0 60px'],
+            ['.cr_y_axis_container', `0 0 ${Y_AXIS_AREA_WIDTH}px`],
             ['.cr_canvas_plus_x_axis', '0.9 1 320px'],  // "1 0 auto"?
         ]);
+
+        const y_margin = X_AXIS_AREA_HEIGHT - AXIS_WIDTH;
         apply_css_tree(parent_elem, [
-            ['.cr_y_axis', 'align-self: flex-start;'],  // Flush to the top.
-            ['.cr_y_axis', 'width: 60px;'],  // TODO: may not be needed?
+            ['.cr_y_axis_container', 'position: relative;'],
+            ['.cr_y_axis', `position: absolute;
+                            top: 0px; bottom: ${y_margin}px;
+                            left: 0px; right: 0px;`],
         ]);
 
         apply_flex(qs('.cr_canvas_plus_x_axis'), 'column', [
             ['.cr_canvas', '1 0 auto'],
-            ['.cr_x_axis', '0 0 30px'],
+            ['.cr_x_axis', `0 0 ${X_AXIS_AREA_HEIGHT}px`],
         ]);
 
         // Others.
         apply_css_tree(parent_elem, [
             // Set up the axes.
-            ['.cr_x_axis', 'border-top: 2px solid black;'],  // x axis.
-            ['.cr_y_axis', 'border-right: 2px solid black;'],  // y axis.
+            ['.cr_x_axis', `border-top: ${AXIS_WIDTH}px solid black;`],
+            ['.cr_y_axis', `border-right: ${AXIS_WIDTH}px solid black;`],
+
+            // Make sure we use "border-box": the actual height of div.cr_x_axis
+            // depends on this, so if this becomes "content-box" then `y_margin`
+            // above must be equal to X_AXIS_AREA_HEIGHT.
+            //
+            // (Either is fine, but we have to choose one!)
+            ['.cr_x_axis, .cr_y_axis', 'box-sizing: border-box;'],
 
             // Set up styles for axis ticks.
-            ['.cr_x_axis, .cr_y_axis',
-             'font-size: 12px; overflow: visible; position: relative;'],
+            ['.cr_x_axis',
+             'position: relative; font-size: 12px; overflow: visible;'],
+            ['.cr_y_axis', 'font-size: 12px; overflow: visible;'],
 
             // Miscellaneous.
             ['.cr_canvas', 'overflow: hidden; position: relative;'],

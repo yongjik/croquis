@@ -96,10 +96,6 @@ export class Ctxt {
     // Called when the window size *may* have changed: see the discussion on
     // window_setInterval() inside croquis_loader.js.
     resize_handler() {
-        // Add 2px (width of the x axis).
-        this.canvas_main.querySelector('.cr_y_axis').style.height =
-            (this.get_canvas().clientHeight + 2) + 'px';
-
         this.tile_handler.tile_set.resize_canvas();
     }
 
