@@ -67,3 +67,13 @@ def verify_tooltip(page, cell, coord_callback, verify_callback, timeout=2500):
         if verify_callback(content): return content
 
     raise TimeoutError
+
+# Check the plot is functioning by hovering at the center of the plot and
+# checking that we get the correct label.
+def check_center_label(page, cell, label, **kwargs):
+    def coord_cb():
+        grid = cell.wait_for_selector('.cr_grid')
+        grid.scroll_into_view_if_needed()
+        return get_center_coord(grid)
+
+    verify_tooltip(page, cell, coord_cb, lambda text: label in text, **kwargs)
