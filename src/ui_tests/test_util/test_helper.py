@@ -53,6 +53,8 @@ def verify_tooltip(page, cell, coord_callback, verify_callback, timeout=2500):
     while time.time() < T + timeout * 0.001:
         x1, y1 = coord_callback()
         if abs(x - x1) + abs(y - y1) > 1.0:
+            # import datetime; print(datetime.datetime.now())
+            # print(f'Moving cursor from {x} {y} to {x1} {y1}')
             x, y = x1, y1
             page.mouse.move(x, y)
 
@@ -66,6 +68,7 @@ def verify_tooltip(page, cell, coord_callback, verify_callback, timeout=2500):
         content = tooltip.text_content()
         if verify_callback(content): return content
 
+    # page.pause()
     raise TimeoutError
 
 # Check the plot is functioning by hovering at the center of the plot and

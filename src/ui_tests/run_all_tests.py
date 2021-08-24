@@ -53,4 +53,7 @@ with JupyterLauncher(cmd_args) as launcher, sync_playwright() as p:
     from tests import save_test
     save_test.run_tests(launcher, context)
 
+    from tests import resize_test
+    resize_test.run_tests(launcher, context)
+
     browser.close()

@@ -501,6 +501,19 @@ export class TileHandler {
             }
         }
 
+        // If mouse is currently not moving, re-compute if we want highlight
+        // tiles exactly under the cursor.
+        //
+        // TODO: The current logic is very hard to follow: it calls back to
+        // TileHandler.handle_mouse_stop() and recompute_highlight().  So, we
+        // may end up calling recompute_highlight() again below.  Need to clean
+        // up the code!
+        if (this.mouse_handler.move == 'stopped') {
+            console.log('BBB calling stopped handler!!');
+            this.mouse_handler.mouse_handler_cb('stopped');
+            return;
+        }
+
         // Re-compute best highlight, in case what we received is a
         // highglight tile.
         if (has_hover) {

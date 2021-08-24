@@ -16,6 +16,7 @@ export class CanvasMouseHandler {
         this.select_area = this.canvas.querySelector('.cr_select_area');
 
         this.mouse_stopped_cb = null;
+        this.move = 'moving';
         this.reset();
 
         this.mouse_x = null;
@@ -46,7 +47,11 @@ export class CanvasMouseHandler {
         // Movement state: moving (mouse is moving)
         //                 stopped (mouse has stopped)
         //                 outside (mouse is outside the canvas)
-        this.move = 'moving';
+        //
+        // Since this is also called by TileHandler.register_canvas_config(), we
+        // want to keep mouse status if it's 'stopped': otherwise highlight
+        // handling will be wrong.
+        if (this.move != 'stopped') this.move = 'moving';
 
         // Mouse position when we started either "select and zoom" or panning.
         // (When this.btn == 'up', this value has no meaning.)
@@ -56,7 +61,11 @@ export class CanvasMouseHandler {
         this.x_offset0 = this.y_offset0 = null;
 
         this.clear_select_area();
-        this.clear_mouse_stop_cb();
+
+        // Seems like we don't need this: if mouse is not moving, we want to
+        // know about it, even if canvas config changes in the middle.
+
+        // this.clear_mouse_stop_cb();
     }
 
     replay_mouse_event(args) {
