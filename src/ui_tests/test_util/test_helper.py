@@ -13,6 +13,7 @@ def run_jupyter_cell(page, substr, result_selector, **kwargs):
     pre.click()
     cell = page.wait_for_selector(f'div.cell.selected:has({selector})')
     focus = cell.wait_for_selector('textarea')
+    focus.scroll_into_view_if_needed()
     focus.press('Control+Enter')
 
     return cell, cell.wait_for_selector(result_selector, **kwargs)

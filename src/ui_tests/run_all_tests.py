@@ -50,6 +50,9 @@ with JupyterLauncher(cmd_args) as launcher, sync_playwright() as p:
     from tests import basic_test
     basic_test.run_tests(launcher, context)
 
+    from tests import dimension_check_test
+    dimension_check_test.run_tests(launcher, context)
+
     from tests import save_test
     save_test.run_tests(launcher, context)
 
