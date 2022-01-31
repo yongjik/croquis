@@ -25,4 +25,5 @@ module.exports = {
         modules: [],
     },
     devtool: 'source-map',
+    stats: 'errors-only',
 };

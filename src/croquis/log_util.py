@@ -4,6 +4,7 @@ import datetime
 import logging
 import math
 import os
+import sys
 import threading
 import time
 
@@ -61,7 +62,13 @@ class LoggingHandler(logging.Handler):
             if self.f is not None:
                 self.f.write(msg)
             if record.levelno >= logging.INFO:
-                os.write(2, bytes(msg, 'utf-8'))
+                # The iPython kernel intercepts stderr (fd 2) and sends every
+                # output as ZMQ message for the notebook, but we don't want to
+                # spam the notebook.  For some reason, `os.stderr.fileno()`
+                # points to the original stderr, so we can use that.
+                #
+                # For details, see the `OutStream` class inside `ipykernel`.
+                os.write(sys.stderr.fileno(), bytes(msg, 'utf-8'))
         except Exception:
             self.handleError(record)
 
