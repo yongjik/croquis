@@ -53,7 +53,10 @@ else()
     add_compile_definitions(__STDC_FORMAT_MACROS)
 endif()
 
-find_package(Python3 COMPONENTS Interpreter Development)
+# Commented out: looks like we don't actually use any variables found here, and
+# it tries to use /usr/bin/python3 instead of the current conda environment.
+#
+# find_package(Python3 COMPONENTS Interpreter Development)
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
