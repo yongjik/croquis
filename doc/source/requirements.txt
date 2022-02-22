@@ -1,0 +1,3 @@
+# Used for readthedocs.
+playwright==1.19.0
+pybind11==2.9.1
