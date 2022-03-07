@@ -174,6 +174,17 @@ add_dependencies(wheel _csrc)
 add_dependencies(wheel webpack)
 
 #-------------------------------------------------
+# Build the documentation via sphinx.
+
+set(HTML_OUT_DIR "${CMAKE_BINARY_DIR}/doc/html")
+add_custom_target(html
+    COMMAND ${CMAKE_COMMAND} -E remove_directory "${HTML_OUT_DIR}"
+    COMMAND "sphinx-build" "-T" "-W" "--keep-going" "-b" "html"
+            "${CMAKE_SOURCE_DIR}/../doc/source" "${HTML_OUT_DIR}"
+)
+add_dependencies(html _csrc)
+
+#-------------------------------------------------
 # Tests.
 # TODO: Add as a separate directory.
 #
