@@ -1,6 +1,6 @@
 # Configuration file for the Sphinx documentation builder.
 
-import os, sys, subprocess
+import os, re, sys, subprocess
 
 #-------------------------------------------------
 # Set up the environment.
@@ -17,12 +17,32 @@ if 'READTHEDOCS' in os.environ:
     # Set up the environment.
     subprocess.check_call(os.path.join(curdir, 'readthedocs_helper.sh'))
 
+# Horrible hack: Inside readthedocs, we want to know which branch we're
+# generating the documents for.  Readthedocs appends its own configuration
+# *after* the contents of this file, so we read our own script to find it out.
+def _get_current_readthedocs_branch():
+    if 'PROJECT_VERSION' in os.environ:
+        version = os.environ['PROJECT_VERSION']
+        print(f'Environment variable PROJECT_VERSION is {version}.')
+        return f'v{version}'
+
+    with open(__file__, 'rt') as f:
+        for line in f:
+            m = re.search(r"'github_version': *'(.*)'", line)
+            if m: return m.group(1)
+
+    return 'master'
+
+_my_current_branch = _get_current_readthedocs_branch()
+
 #-------------------------------------------------
 # Project information.
 
 project = 'Croquis'
 copyright = '2021-2022, Yongjik Kim'
 author = 'Yongjik Kim'
+
+version = 'latest' if _my_current_branch == 'master' else _my_current_branch
 
 #-------------------------------------------------
 # General configuration.
