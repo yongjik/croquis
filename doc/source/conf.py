@@ -52,8 +52,16 @@ version = 'latest' if _my_current_branch == 'master' else _my_current_branch
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.extlinks',
     'sphinx.ext.intersphinx',
 ]
+
+extlinks = {
+    'githublink': (
+        f'https://github.com/yongjik/croquis/blob/{_my_current_branch}/%s',
+        'file %s',
+    ),
+}
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
