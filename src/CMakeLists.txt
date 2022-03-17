@@ -176,13 +176,28 @@ add_dependencies(wheel webpack)
 #-------------------------------------------------
 # Build the documentation via sphinx.
 
+# Create images used in the documentation by capturing screenshots.
+set(DOC_IMAGES_OUT_DIR "${CMAKE_BINARY_DIR}/doc/source/images")
+add_custom_target(doc_images
+    COMMAND ${CMAKE_COMMAND} -E remove_directory "${DOC_IMAGES_OUT_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${DOC_IMAGES_OUT_DIR}"
+    COMMAND "python3" "${CMAKE_SOURCE_DIR}/ui_tests/create_images.py"
+            "--output_dir=${DOC_IMAGES_OUT_DIR}" "--headless"
+)
+add_dependencies(doc_images _csrc)
+
+set(DOC_SOURCE_COPY_DIR "${CMAKE_BINARY_DIR}/doc/source")
 set(HTML_OUT_DIR "${CMAKE_BINARY_DIR}/doc/html")
 add_custom_target(html
     COMMAND ${CMAKE_COMMAND} -E remove_directory "${HTML_OUT_DIR}"
-    COMMAND "sphinx-build" "-T" "-W" "--keep-going" "-b" "html"
-            "${CMAKE_SOURCE_DIR}/../doc/source" "${HTML_OUT_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_SOURCE_DIR}/../doc/source" "${DOC_SOURCE_COPY_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E env "DOC_IMAGES_DIR=${DOC_IMAGES_OUT_DIR}"
+            "sphinx-build" "-T" "-W" "--keep-going" "-b" "html"
+            "${DOC_SOURCE_COPY_DIR}" "${HTML_OUT_DIR}"
 )
 add_dependencies(html _csrc)
+add_dependencies(html doc_images)
 
 #-------------------------------------------------
 # Tests.

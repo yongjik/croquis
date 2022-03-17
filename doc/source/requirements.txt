@@ -3,6 +3,7 @@ jinja2==3.0.3
 notebook==6.4.8
 numpy==1.22.2
 pandas==1.4.1
+Pillow==8.4.0
 playwright==1.19.1
 pybind11==2.9.1
 sphinx==4.4.0

@@ -70,6 +70,7 @@ but it will be nice to know that someone's interested.)
    :caption: Contents:
 
    faq
+   tutorial
 
 ..
    TODO: add this?

@@ -15,11 +15,13 @@ topdir=$(dirname "$0")/../..
 
 cd "$topdir"
 npm install -g webpack webpack-cli terser
-playwright install firefox
+playwright install chromium
 
 mkdir -p build.make
 cd build.make
 cmake -G'Unix Makefiles' -DCMAKE_BUILD_TYPE=Release ../src
-make -j8
+make -j8 doc_images
 
 echo "Build successful!"
+
+mv doc/source/images/ ../doc/source

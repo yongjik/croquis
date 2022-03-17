@@ -14,7 +14,7 @@ sys.path.insert(0, f'{curdir}/../../src')
 #   os.environ['CROQUIS_UNITTEST'] = '1'
 
 if 'READTHEDOCS' in os.environ:
-    # Set up the environment.
+    # Set up the environment.  See readthedocs_helper.sh for more info.
     subprocess.check_call(os.path.join(curdir, 'readthedocs_helper.sh'))
 
 # Horrible hack: Inside readthedocs, we want to know which branch we're
