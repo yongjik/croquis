@@ -24,4 +24,4 @@ make -j8 doc_images
 
 echo "Build successful!"
 
-mv doc/source/images/ ../doc/source
+cp -a doc/source/images/ ../doc/source
