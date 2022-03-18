@@ -28,5 +28,28 @@ Please paste into a Jupyter cell::
 
     fig.show()
 
-.. image:: images/tutorial1.png
+.. image:: images/tutorial1-first.png
+
+The size of the graph will automatically adjust to match the browser window.
+(Sorry, currently there's no option to manually modify graph dimension.)
+
+Adding multiple lines at once
+-----------------------------
+
+While the previous code works, it's not the most efficient way to handle large
+data.  If your data is already in a rectangular block, you can add them at
+once::
+
+    fig = croquis.plot()
+
+    X = np.linspace(0, 2 * np.pi, 200)
+    freqs = np.linspace(0, 1, 100).reshape(100, 1)
+    Y = np.sin(freqs * X)  # matrix of size 100 x 200
+    fig.add(X, Y, labels=['freq=%.2f' % f for f in freqs])
+
+    fig.show()
+
+This will show 100 pieces of sine waves, each with a different frequency.
+
+.. image:: images/tutorial2-multiple-lines.png
 

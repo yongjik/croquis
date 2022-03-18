@@ -69,8 +69,8 @@ but it will be nice to know that someone's interested.)
    :maxdepth: 2
    :caption: Contents:
 
-   faq
    tutorial
+   faq
 
 ..
    TODO: add this?
