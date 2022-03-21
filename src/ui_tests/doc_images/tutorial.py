@@ -1,12 +1,13 @@
 # Images for the tutorial.
 
-import io
-
-from PIL import Image, ImageOps
+import os
+import re
 
 from test_util import screenshot, test_helper
 
-CELL1 = '''
+curdir = os.path.dirname(os.path.realpath(__file__))
+
+CELLS = f'''
 ### CELL1 ###
 
 import croquis
@@ -20,9 +21,9 @@ for fn in np.sin, np.cos, np.tanh:
     fig.add(X, Y, labels=fn.__name__)
 
 fig.show()
-'''
 
-CELL2 = '''
+--------------------------------------------------
+
 ### CELL2 ###
 
 fig = croquis.plot()
@@ -33,9 +34,9 @@ Y = np.sin(freqs * X)  # matrix of size 100 x 200
 fig.add(X, Y, labels=['freq=%.2f' % f for f in freqs])
 
 fig.show()
-'''
 
-CELL3 = '''
+--------------------------------------------------
+
 ### CELL3 ###
 
 # Let's make the random numbers predictable.
@@ -68,9 +69,9 @@ fig.add(X, Y, colors,
         labels=['c=(%.2f, %.2f) r=%.2f' % x for x in zip(Cx, Cy, R)])
 
 fig.show()
-'''
 
-CELL4 = '''
+--------------------------------------------------
+
 ### CELL4 ###
 
 np.random.seed(0)
@@ -83,37 +84,49 @@ labels=['pt %d' % i for i in range(N)]
 fig = croquis.plot()
 fig.add(X, Y, marker_size=3, labels=labels)
 fig.show()
-'''
 
-CELL5 = '''
+--------------------------------------------------
+
 ### CELL5 ###
 
 import pandas as pd
 
-df = pd.read_csv('ex5.csv')
+df = pd.read_csv('{curdir}/../../../doc/ex5.csv')
+
 fig = croquis.plot()
 fig.add(df.x, df.y1, label='y1', line_width=0, marker_size=15)
 fig.add(df.x, df.y2, label='y2', line_width=3, marker_size=10)
+fig.show()
+
+--------------------------------------------------
+
+### CELL6 ###
+
+df = pd.read_csv('{curdir}/../../../doc/ex6.csv')
+
+fig = croquis.plot(x_axis='timestamp')
+fig.add(pd.to_datetime(df.date), df.sales, groupby=df.location)
 fig.show()
 '''
 
 def gen_images(launcher, context):
     page = context.new_page()
     page.set_viewport_size(dict(width=1500, height=1200))
-    url = launcher.create_new_notebook(
-        'images_tutorial.ipynb', [CELL1, CELL2, CELL3, CELL4])
+    cells = re.split(r'(?m)^-+\n', CELLS)
+    url = launcher.create_new_notebook('images_tutorial.ipynb', cells)
     page.goto(url)
 
-    cell, img = test_helper.run_jupyter_cell(page, 'CELL1', 'div.croquis_nbext')
-    screenshot.save_screenshot(page, img, 'tutorial1-first.png')
+    output_list = [
+        ('CELL1', 'tutorial1-first.png'),
+        ('CELL2', 'tutorial2-multiple-lines.png'),
+        ('CELL3', 'tutorial3-circles.png'),
+        ('CELL4', 'tutorial4-gaussian.png'),
+        ('CELL5', 'tutorial5-csv.png'),
+        ('CELL6', 'tutorial6-csv-groupby.png'),
+    ]
 
-    cell, img = test_helper.run_jupyter_cell(page, 'CELL2', 'div.croquis_nbext')
-    screenshot.save_screenshot(page, img, 'tutorial2-multiple-lines.png')
-
-    cell, img = test_helper.run_jupyter_cell(page, 'CELL3', 'div.croquis_nbext')
-    screenshot.save_screenshot(page, img, 'tutorial3-circles.png')
-
-    cell, img = test_helper.run_jupyter_cell(page, 'CELL4', 'div.croquis_nbext')
-    screenshot.save_screenshot(page, img, 'tutorial4-gaussian.png')
+    for cell_id, filename in output_list:
+        cell, img = test_helper.run_jupyter_cell(page, cell_id, 'div.croquis_nbext')
+        screenshot.save_screenshot(page, img, filename)
 
     page.close()

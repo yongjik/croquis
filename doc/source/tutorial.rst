@@ -137,20 +137,102 @@ and ``y2``::
     import pandas as pd
 
     df = pd.read_csv('ex5.csv')
+
     fig = croquis.plot()
     fig.add(df.x, df.y1, label='y1', line_width=0, marker_size=15)
     fig.add(df.x, df.y2, label='y2', line_width=3, marker_size=10)
     fig.show()
 
-![CSV example](ex5.png)
+.. image:: images/tutorial5-csv.png
 
 As shown here, you can change line style (in a **very** limited way) by using
-`line_width`, `marker_size`, or `highlight_line_width` parameters.  (The last
-one specifies width of the line when highlighted by mouse hovering.)
+``line_width``, ``marker_size``, or ``highlight_line_width`` parameters.  (The
+last one specifies width of the line when highlighted by mouse hovering.)
 
+Reading data from CSV, irregular shape, with timestamps
+-------------------------------------------------------
 
+Sometimes your data contains multiple lines with different lengths.  For
+example, imagine :githublink:`your CSV file <doc/ex6.csv>` contains the
+following:
 
+========== ======== =====
+date       location sales
+========== ======== =====
+2021-05-01 Seoul       12
+2021-05-02 Seoul        6
+...        ...        ...
+2021-05-31 Seoul        5
+2021-05-10 New York    18
+2021-05-11 New York    23
+...        ...        ...
+2021-05-31 New York    12
+2021-04-25 Tokyo       15
+2021-04-26 Tokyo       16
+...        ...        ...
+2021-05-05 Tokyo       24
+========== ======== =====
 
+Of course, you can read this data, iterate over unique values of ``location``,
+and add lines one by one.  However, croquis also supports plotting multiple
+lines with `groupby` option::
 
+    df = pd.read_csv('ex6.csv')
 
+    fig = croquis.plot(x_axis='timestamp')
+    fig.add(pd.to_datetime(df.date), df.sales, groupby=df.location)
+    fig.show()
 
+Here, we also use pandas to transform date strings to datetime values.  In order
+to show dates, you have to create the plot object with ``x_axis='timestamp'`` -
+x coordinates can be given as either ``np.datetime64`` type or plain numbers (in
+which case it is interpreted as
+`POSIX timestamps <https://en.wikipedia.org/wiki/Unix_time>`_.
+
+.. image:: images/tutorial6-csv-groupby.png
+
+----
+
+In case the data is really big, there's also a more efficient method, provided
+that the points are already arranged so that points that belong to the same line
+appear in a consecutive chunk: you can supply another argument ``start_idxs``,
+which is the index inside X and Y where each new line starts.  See the comments
+on ``start_idxs`` in the XXX reference XXX for details.
+
+..
+    TODO: Add reference !!
+
+Creating ``start_idxs`` from CSV data needs a bit of fiddling::
+
+    df = pd.read_csv('ex6.csv')
+
+    # If necessary, sort data so that each location appears contiguously.
+    df = df.sort_values(['location', 'date'])
+
+    # Create start_idxs.
+    locations, counts = np.unique(df.location.to_numpy(), return_counts=True)
+    start_idxs = np.zeros_like(counts)
+    start_idxs[1:] = np.cumsum(counts)[:-1]
+
+    # Here, start_idxs = [0, 22, 53]:
+    #   df[0:22] is the first line (New York)
+    #   df[22:53] is the second line (Seoul)
+    #   df[53:] is the third line (Tokyo)
+
+    fig = croquis.plot(x_axis='timestamp')
+    fig.add(pd.to_datetime(df.date), df.sales, start_idxs=start_idxs,
+            labels=locations)
+    fig.show()
+
+The search box
+--------------
+
+The right-hand side contains a search box: "Regex" enables regular expression.
+By default, "Autoselect" is on, which means what appears on the graph is exactly
+what matches your search expression (or everything, if the search box is empty).
+
+When "Autoselect" is off, the selection is independent from search results: you
+can search and click on individual items to turn them on/off.
+
+..
+    TODO: Expand this section!
