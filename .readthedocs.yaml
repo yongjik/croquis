@@ -8,6 +8,7 @@ build:
   apt_packages:
     - build-essential
     - cmake
+    - fonts-noto-color-emoji
     - g++
 
 sphinx:
