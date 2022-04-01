@@ -11,6 +11,8 @@ Step 2 can be repeated as many times as you want: the first two arguments must
 always be X and Y coordinates; the rest are options.  Now let's see some
 examples.
 
+.. _Tutorial1:
+
 Adding multiple lines, one by one
 ---------------------------------
 
