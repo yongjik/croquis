@@ -95,6 +95,26 @@ def gen_selection(launcher, context, page):
         lambda text: re.search(r'(?s)(CA|HI) US.*2020', text))
     screenshot.save_screenshot(page, img, 'sel2-tooltip.png')
 
+    searchbox = cell.wait_for_selector('div.cr_searchbox input')
+    searchbox.click()
+
+    imgs = []
+    imgs.append(screenshot.get_screenshot(page, img))
+
+    for ch in list('yosemi') + ['Backspace'] * 6 + list('los angeles'):
+        searchbox.press(ch)
+        imgs.append(screenshot.get_screenshot(page, img, delay_msec=150))
+
+    durations = [300] * len(imgs)
+    durations[0] = durations[-1] = 1500
+    imgs[0].save(
+        'sel3-autoselect.png',
+        save_all=True,
+        append_images=imgs[1:],
+        duration=durations,
+        loop=0
+    )
+
 def gen_images(launcher, context):
     page = context.new_page()
     page.set_viewport_size(dict(width=1500, height=1200))

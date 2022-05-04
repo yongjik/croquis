@@ -57,6 +57,8 @@ California and Hawaii during February 2020 [1]_::
             'https://raw.githubusercontent.com/yongjik/croquis-extra/master/noaa_temperature_data/CA_HI_Feb2020.csv.gz',
             csv_filename)
 
+    df = pd.read_csv(csv_filename)
+
     fig = croquis.plot(x_axis='timestamp')
     fig.add(pd.to_datetime(df.timestamp, unit='s'), df.temperature, groupby=df.name)
     fig.show()
@@ -71,8 +73,9 @@ be highlighted with its label and the nearest coordinate:
 
 .. image:: images/sel2-tooltip.png
 
-By default, the search box is in the "autoselect" mode: what you search is ...
+By default, the search box is in the "autoselect" mode: the figure will show
+only those that matches the search box:
 
-
+.. image:: images/sel3-autoselect.png
 
 
