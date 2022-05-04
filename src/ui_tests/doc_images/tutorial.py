@@ -131,34 +131,4 @@ def gen_images(launcher, context):
         cells[cell_id] = cell, img
         screenshot.save_screenshot(page, img, filename)
 
-    # Create figures for explaining the UI elements.
-    cell, img = cells['CELL1']
-    grid = cell.wait_for_selector('div.cr_grid')
-    grid.scroll_into_view_if_needed()
-    box = grid.bounding_box()
-    x0, y0, w, h = box['x'], box['y'], box['width'], box['height']
-
-    page.mouse.move(x0 + w * 0.1, y0 + h * 0.1)
-    page.mouse.down()
-    page.wait_for_timeout(100)
-    page.mouse.move(x0 + w * 0.7, y0 + h * 0.7)
-    page.wait_for_timeout(100)
-
-    screenshot.save_screenshot(page, img, 'ui1-zoom.png')
-
-    page.mouse.up()
-
-    screenshot.save_screenshot(page, img, 'ui2-zoom.png')
-
-    pan_btn = img.wait_for_selector('label:has-text("pan")')
-    pan_btn.click()
-
-    page.mouse.move(x0 + w * 0.7, y0 + h * 0.3)
-    page.mouse.down()
-    page.wait_for_timeout(100)
-    page.mouse.move(x0 + w * 0.1, y0 + h * 0.6)
-    page.wait_for_timeout(100)
-
-    screenshot.save_screenshot(page, img, 'ui3-pan.png')
-
     page.close()

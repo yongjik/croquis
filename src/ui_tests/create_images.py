@@ -55,3 +55,6 @@ with JupyterLauncher(cmd_args) as launcher, sync_playwright() as p:
 
     from doc_images import tutorial
     tutorial.gen_images(launcher, context)
+
+    from doc_images import ui
+    ui.gen_images(launcher, context)
