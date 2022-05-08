@@ -43,8 +43,8 @@ Search and selection
 --------------------
 
 Croquis lets you interactively select/deselect a large number of items based on
-labels.  As an example, let's try the temperature data of weather stations in
-California and Hawaii during February 2020 [1]_::
+labels.  As an example, let's play with the temperature data of weather stations
+in California and Hawaii during February 2020 [1]_::
 
     import os
     import croquis
@@ -73,9 +73,21 @@ be highlighted with its label and the nearest coordinate:
 
 .. image:: images/sel2-tooltip.png
 
-By default, the search box is in the "autoselect" mode: the figure will show
-only those that matches the search box:
+By default, the search box is in **Autoselect** mode, i.e., the figure will
+show exactly those that matches the search box:
 
 .. image:: images/sel3-autoselect.png
 
+If you check the **Regex** button, the input is interpreted as a regular
+expression (and case sensitive):
 
+.. image:: images/sel4-regex.png
+
+You can also hide/show individual items by clicking on them in the item list
+(which also turns autoselect off).  In this mode, you can also do bulk
+select/deselect by clicking on the "More..." button.  The pop-up menu is pretty
+straightforward: "Select all" and "Deselect all" do what they say, and if the
+search box is not empty, "Select/Deselect all matching '...'" bulk updates all
+matching items.
+
+.. image:: images/sel5-manual-select.png

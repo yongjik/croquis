@@ -96,23 +96,70 @@ def gen_selection(launcher, context, page):
     screenshot.save_screenshot(page, img, 'sel2-tooltip.png')
 
     searchbox = cell.wait_for_selector('div.cr_searchbox input')
-    searchbox.click()
+    regex_btn = cell.wait_for_selector('input.cr_regex')
+    more_btn = cell.wait_for_selector('button.cr_more')
 
+    def _create_animated_png(search_str, filename):
+        searchbox.click()
+        searchbox.fill('')
+
+        imgs = []
+        imgs.append(screenshot.get_screenshot(page, img))
+
+        for ch in search_str:
+            searchbox.press('Backspace' if ch == '\b' else ch)
+            imgs.append(screenshot.get_screenshot(page, img, delay_msec=150))
+
+        screenshot.save_animated_screenshot(imgs, filename)
+
+    _create_animated_png('yosemi\b\b\b\b\b\blos angeles', 'sel3-autoselect.png')
+
+    regex_btn.check()
+    _create_animated_png('SAN.*AIRPORT', 'sel4-regex.png')
+
+    # Demo non-autoselect mode.
+    regex_btn.uncheck()
+    searchbox.fill('')
     imgs = []
-    imgs.append(screenshot.get_screenshot(page, img))
 
-    for ch in list('yosemi') + ['Backspace'] * 6 + list('los angeles'):
-        searchbox.press(ch)
+    more_btn.click()
+    imgs.append(screenshot.get_screenshot(page, img))
+    target = cell.wait_for_selector('a.cr_deselect_all')
+    page.mouse.move(*test_helper.get_center_coord(target))
+    imgs.append(screenshot.get_screenshot(page, img, delay_msec=150))
+    target.click()
+    page.mouse.move(*test_helper.get_center_coord(cell))
+    imgs.append(screenshot.get_screenshot(page, img, delay_msec=150))
+
+    def _scroll_and_click(text):
+        target = cell.wait_for_selector(f'text={text}')
+        target.scroll_into_view_if_needed()
+        page.mouse.move(*test_helper.get_center_coord(target))
+        imgs.append(screenshot.get_screenshot(page, img, delay_msec=150))
+        target.wait_for_selector('input').check()
         imgs.append(screenshot.get_screenshot(page, img, delay_msec=150))
 
-    durations = [300] * len(imgs)
-    durations[0] = durations[-1] = 1500
-    imgs[0].save(
-        'sel3-autoselect.png',
-        save_all=True,
-        append_images=imgs[1:],
-        duration=durations,
-        loop=0
+    _scroll_and_click('PALO ALTO')
+    _scroll_and_click('MAMMOTH LAKE')
+
+    searchbox.fill('ho')
+    imgs.append(screenshot.get_screenshot(page, img, delay_msec=150))
+    searchbox.fill('hono')
+    imgs.append(screenshot.get_screenshot(page, img, delay_msec=150))
+    searchbox.fill('honolulu')
+    imgs.append(screenshot.get_screenshot(page, img, delay_msec=150))
+    more_btn.click()
+    imgs.append(screenshot.get_screenshot(page, img, delay_msec=150))
+    target = cell.wait_for_selector('text=Select all matching')
+    page.mouse.move(*test_helper.get_center_coord(target))
+    imgs.append(screenshot.get_screenshot(page, img, delay_msec=150))
+    target.click()
+    page.mouse.move(*test_helper.get_center_coord(cell))
+    imgs.append(screenshot.get_screenshot(page, img, delay_msec=150))
+
+    screenshot.save_animated_screenshot(
+        imgs, 'sel5-manual-select.png',
+        frame_duration=1200, final_frame_duration=5000
     )
 
 def gen_images(launcher, context):
