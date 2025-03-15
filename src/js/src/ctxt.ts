@@ -50,7 +50,7 @@ class CtxtImpl extends Ctxt {
         // TileHandler constructor also builds the inner HTML structure.
         let parent_elem = node.querySelector(".cr_main1");
         parent_elem!.innerHTML = '';
-        this._tile_handler = new TileHandler(this, parent_elem);
+        this._tile_handler = new TileHandler(this, parent_elem as HTMLElement);
 
         this._log_area = node.querySelector(".cr_dbglog");
         if (this._log_area) {
@@ -74,7 +74,7 @@ class CtxtImpl extends Ctxt {
 
         // Prepare the progress indicator to fire if BE takes too long.
         setTimeout(() => {
-            let bar: HTMLElement | null = node.querySelector("div.cr_progressbar");
+            let bar = node.querySelector("div.cr_progressbar");
             if (bar) bar.style.visibility = "visible";
         }, PROGRESSBAR_TIMEOUT);
 
