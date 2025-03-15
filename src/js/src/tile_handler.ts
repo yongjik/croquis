@@ -3,8 +3,7 @@
 import { AxisHandler } from './axis_handler';
 import { CanvasMouseHandler } from './canvas_mouse_handler';
 import { Ctxt } from './ctxt';
-// XXX should remove !!
-// import { apply_css_tree, apply_flex, disable_drag } from './css_helper';
+import { apply_css_tree, apply_flex, disable_drag } from './css_helper';
 import { EventReplayer, REPLAY_RUNNING } from './event_replayer';
 import { Label } from './label';
 import { TileSet } from './tile_set';
@@ -241,7 +240,7 @@ export class TileHandler {
         this._tile_replay_buf = [];
 
         // Initialize replay handler for debugging.
-        let btns_div = document.querySelector(`#${ctxt.canvas_id}-btns`);
+        let btns_div = document.querySelector(`#${ctxt.ctxt_id}-btns`);
         this._replayer = new EventReplayer(btns_div, {
             reset: () => {
                 this._tile_set.set_highlight(null, null);
@@ -252,11 +251,11 @@ export class TileHandler {
             // TODO!
             // register_canvas_config: (args) => { what here? }
 
-            mouse: (args) => this._mouse_handler.replay_mouse_event(args),
+            mouse: (args: AnyJson) => this._mouse_handler.replay_mouse_event(args),
             clear2: () => this.clear_highlight2(),
             clear3: () => this.clear_highlight3(),
 
-            tile: (args) => {
+            tile: (args: AnyJson) => {
                 return new Promise((resolve, reject) => {
                     this.tile_replay_handler(resolve, args.keys, 0);
                 });
@@ -265,33 +264,33 @@ export class TileHandler {
 
         this._ctxt = ctxt;
         this._tile_set = new TileSet(ctxt);
-        this._canvas = document.querySelector(`#${ctxt.canvas_id} .cr_canvas`);
+        this._canvas = document.querySelector(`#${ctxt.ctxt_id} .cr_canvas`) as HTMLElement;
         this._axis_handler = new AxisHandler(ctxt, this);
-        this._fg = this._canvas.querySelector('.cr_foreground');
+        this._fg = this._canvas.querySelector('.cr_foreground') as HTMLElement;
 
         this._mouse_handler =
             new CanvasMouseHandler(this, this._replayer, this._canvas);
-        this._tooltip = qs('.cr_tooltip');
+        this._tooltip = qs('.cr_tooltip') as HTMLElement;
         this._nearest_pts = new NearestPts();
 
         // TODO: Support replay?
-        this._searchbox = qs('.cr_searchbox input');
+        this._searchbox = qs('.cr_searchbox input') as HTMLInputElement;
         this._searchbox.addEventListener(
             'input', (ev) => this.search_handler(ev));
 
-        this._search_result_area = qs('.cr_search_result');
+        this._search_result_area = qs('.cr_search_result') as HTMLElement;
         // Keeps track of labels in the search result area.
         this._labels = [new Label(ITEM_ID_SENTINEL, false, null, null, null)];
         this._label_map = new Map();
         this._highlighted_label = null;
 
         let ctrl_elem =
-            document.querySelector(`#${ctxt.canvas_id} .cr_ctrl_panel`);
-        let qs_ctrl = (selector) => ctrl_elem.querySelector(selector);
-        qs_ctrl('.cr_home_btn').addEventListener('click', (ev) => {
+            document.querySelector(`#${ctxt.ctxt_id} .cr_ctrl_panel`) as HTMLElement;
+        let qs_ctrl = (selector: string) => ctrl_elem.querySelector(selector);
+        qs_ctrl('.cr_home_btn')!.addEventListener('click', (ev) => {
             this._tile_set.reset_canvas();
         });
-        qs_ctrl('.cr_zoom_in_btn').addEventListener('click', (ev) => {
+        qs_ctrl('.cr_zoom_in_btn')!.addEventListener('click', (ev) => {
             this._tile_set.zoom_level++;
             this._tile_set.x_offset *= ZOOM_FACTOR;
             this._tile_set.y_offset *= ZOOM_FACTOR;
@@ -299,7 +298,7 @@ export class TileHandler {
             this._axis_handler.update_location(true);
             this.request_new_tiles();
         });
-        qs_ctrl('.cr_zoom_out_btn').addEventListener('click', (ev) => {
+        qs_ctrl('.cr_zoom_out_btn')!.addEventListener('click', (ev) => {
             this._tile_set.zoom_level--;
             this._tile_set.x_offset /= ZOOM_FACTOR;
             this._tile_set.y_offset /= ZOOM_FACTOR;
@@ -308,40 +307,48 @@ export class TileHandler {
             this.request_new_tiles();
         });
 
-        (this._btn_regex = qs('.cr_regex')).addEventListener(
+        (this._btn_regex = qs('.cr_regex') as HTMLElement).addEventListener(
             'change', (ev) => this.search_handler(ev));
-        (this._btn_autoselect = qs('.cr_autoselect')).addEventListener(
+        (this._btn_autoselect = qs('.cr_autoselect') as HTMLElement).addEventListener(
             'change', (ev) => this.autoselect_handler(ev));
 
-        this._btn_popup = new PopupBox(qs('.cr_btn_popup'));
+        this._btn_popup = new PopupBox(qs('.cr_btn_popup') as HTMLElement);
 
-        qs('.cr_more').addEventListener('click', (ev) => {
+        qs('.cr_more')!.addEventListener('click', (ev) => {
             if (this._searchbox.value != '') {
                 this._btn_select_matching.textContent =
                     'Select all matching ' + this._searchbox.value;
-                unhide(this._btn_select_matching.parentNode);
+                unhide(this._btn_select_matching.parentNode as HTMLElement);
                 this._btn_deselect_matching.textContent =
                     'Deselect all matching ' + this._searchbox.value;
-                unhide(this._btn_deselect_matching.parentNode);
+                  unhide(this._btn_select_matching.parentNode as HTMLElement);
             }
             else {
-                hide(this._btn_select_matching.parentNode);
-                hide(this._btn_deselect_matching.parentNode);
+                unhide(this._btn_select_matching.parentNode as HTMLElement);
+                unhide(this._btn_select_matching.parentNode as HTMLElement);
             }
 
             this._btn_popup.show();
         });
 
-        qs('.cr_select_all').addEventListener(
+        qs('.cr_select_all')!.addEventListener(
             'click', (ev) => this.select_btn_handler(ev, 'select_all'));
-        qs('.cr_deselect_all').addEventListener(
+        qs('.cr_deselect_all')!.addEventListener(
             'click', (ev) => this.select_btn_handler(ev, 'deselect_all'));
-        (this._btn_select_matching = qs('.cr_select_matching')).addEventListener(
+
+        (
+            this._btn_select_matching =
+                qs('.cr_select_matching') as HTMLElement
+        ).addEventListener(
             'click', (ev) => this.select_btn_handler(ev, 'select_matching'));
-        (this._btn_deselect_matching = qs('.cr_deselect_matching')).addEventListener(
+
+        (
+            this._btn_deselect_matching =
+                qs('.cr_deselect_matching') as HTMLElement
+        ).addEventListener(
             'click', (ev) => this.select_btn_handler(ev, 'deselect_matching'));
 
-        this._search_stat_area = qs('.cr_search_stat');
+        this._search_stat_area = qs('.cr_search_stat') as HTMLElement;
 
         // Set to true if we couldn't send request to udpate tiles after
         // selection change, because there were too many in-flight tiles.
@@ -1370,7 +1377,7 @@ export class TileHandler {
     private _tooltip: HTMLElement;
     private _nearest_pts: NearestPts;
 
-    private _searchbox: HTMLElement;
+    private _searchbox: HTMLInputElement;
     private _search_result_area: HTMLElement;
     private _labels: Label[];
     private _label_map: Map;
@@ -1378,7 +1385,7 @@ export class TileHandler {
 
     private _btn_regex: HTMLElement;
     private _btn_autoselect: HTMLElement;
-    private _btn_popup: HTMLElement;
+    private _btn_popup: PopupBox;
     private _btn_select_matching: HTMLElement;
     private _btn_deselect_matching: HTMLElement;
     private _search_stat_area: HTMLElement;

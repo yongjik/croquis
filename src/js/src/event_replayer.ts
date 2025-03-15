@@ -1,5 +1,6 @@
 // Utility class for recording and replaying events, for debugging.
 
+import { AnyJson } from './types';
 import { get_timestamp_str } from './util.js';
 
 export const REPLAY_DISABLED = 0;
@@ -121,7 +122,7 @@ export class EventReplayer {
     //      'mouse': mouse cursor moves
     //      'leave': mouse leaves the area
     //      'tile': highlight tile received from BE
-    record_event(event_type, args) {
+    record_event(event_type: string, args: AnyJson) {
         if (!this.enabled) return;
 
         if (this.status != REPLAY_RUNNING)

@@ -24,6 +24,10 @@ export abstract class Ctxt {
 
     dispose() { }
 
+    get ctxt_id(): string {
+        return this._ctxt_id;
+    }
+
     get comm(): Promise<CommWrapper> {
         return this._comm;
     }

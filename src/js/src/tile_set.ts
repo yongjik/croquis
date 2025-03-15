@@ -434,4 +434,6 @@ export class TileSet {
     new_sm_version() {
         return (this.sm_version += 2);
     }
+
+    tile_cache: LRUCache<Tile>;
 }
