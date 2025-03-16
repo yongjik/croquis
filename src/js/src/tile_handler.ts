@@ -6,10 +6,12 @@ import { Ctxt } from './ctxt';
 import { apply_css_tree, apply_flex, disable_drag } from './css_helper';
 import { EventReplayer, REPLAY_RUNNING } from './event_replayer';
 import { Label } from './label';
+import { Tile } from './tile';
 import { TileSet } from './tile_set';
 import { AnyJson } from './types';
 import {
     hide,
+    HighlightType,
     INFLIGHT_REQ_EXPIRE_MSEC,
     ITEM_ID_SENTINEL,
     LRUCache,
@@ -52,8 +54,22 @@ const TOOLTIP_OFFSET_Y = 10;  // pixels
 // WARNING: takes a lot of resource - should be off when debugging performance!
 const SHOW_WAYPOINT_COMET = false;
 
-const HIGHLIGHT_VIA_CANVAS = "canvas";
-const HIGHLIGHT_VIA_SEARCH = "search";
+class MouseHistItem {
+    constructor(
+        public t: number,
+        public x: number,
+        public y: number,
+    ) { }
+}
+
+// XXX We need comments for this!  Also is this correct?
+class Waypoint {
+    constructor(
+        public x: number | null,
+        public y: number | null,
+        public item_id: number,
+    ) { }
+}
 
 class PtData {
     constructor(
@@ -398,25 +414,25 @@ export class TileHandler {
     // Utility function for initializing/resetting internal state.
     // (Used for replaying.)
     reset_state() {
-        this.update_T = null;  // Last time highlight was changed.
-        this.hide_cb = null;  // Set if we want to hide the foreground.
-        this.highlight_change_time = null;
+        this._update_T = null;  // Last time highlight was changed.
+        this._hide_cb = null;  // Set if we want to hide the foreground.
+        this._highlight_change_time = null;
             // Last time the highlighted item was changed.
 
         // Remember recent coordinates of mouse movement for predictive
         // highlighting.
-        this.mouse_hist = [];
+        this._mouse_hist = [];
 
         // LRU cache of predicted waypoints when the mouse is moving.
         // Each element is a dict with keys `x`, `y`, and `item_id`.
-        this.waypoints = [];
+        this._waypoints = [];
     }
 
     // Called by Ctxt when BE created a new canvas config - may happen (1)
     // initially, (2) after window resize, or (3) after zoom request.
     //
     // TODO: Allow user to switch the grid on/off.
-    register_canvas_config(msg_dict) {
+    register_canvas_config(msg_dict: AnyJson) {
         // TODO: Event replay is not written yet.
         this._replayer.record_event('canvas', msg_dict);
 
@@ -430,7 +446,7 @@ export class TileHandler {
 
     // Called by Ctxt when we receive a new tile from BE: we add the tile to
     // either the visible layer or `tile_cache`.
-    register_tile(tile, seqs) {
+    register_tile(tile: Tile, seqs: number[]) {
         // Update sequence #.
         for (let seq of seqs) {
             this._inflight_reqs.delete(seq);
@@ -546,9 +562,9 @@ export class TileHandler {
         if (has_hover) {
             // If highlight was triggered via search, just re-set the same
             // item_id: it will pick up any new tile if applicable.
-            if (this._tile_set.highlight_trigger == HIGHLIGHT_VIA_SEARCH) {
+            if (this._tile_set.highlight_trigger == HighlightType.VIA_SEARCH) {
                 this._tile_set.set_highlight(
-                    this._tile_set.highlight_item_id, HIGHLIGHT_VIA_SEARCH);
+                    this._tile_set.highlight_item_id, HighlightType.VIA_SEARCH);
             }
             else {
                 this.recompute_highlight();
@@ -591,11 +607,11 @@ export class TileHandler {
     // on Chrome and ~15ms on Firefox.  So it should be OK to just update
     // history every time we get this callback.
     update_mouse_history(x, y) {
-        let mouse_hist = this.mouse_hist;
-        const rel_T = this._replayer.rel_time;
-        const last_T =
+        let mouse_hist = this._mouse_hist;
+        const rel_T: number = this._replayer.rel_time;
+        const last_T: number =
             (mouse_hist.length) ? mouse_hist[mouse_hist.length - 1].t : 0;
-        const new_item = {t: rel_T, x: x, y: y};
+        const new_item = new MouseHistItem(rel_T, x, y);
 
         // If the callback is being called too frequently, just replace the
         // last known position and return.
@@ -767,12 +783,12 @@ export class TileHandler {
         }
 
         // If we're here, we've got some candidate waypoints.
-        const len1 = this.waypoints.length;
+        const len1 = this._waypoints.length;
         const len2 = buf.length;
         if (len1 + len2 > MAX_WAYPOINT_CNT)
-            this.waypoints.splice(0, len1 + len2 - MAX_WAYPOINT_CNT);
+            this._waypoints.splice(0, len1 + len2 - MAX_WAYPOINT_CNT);
         this._replayer.log('Appending to waypoints:', buf);
-        this.waypoints.push(...buf);
+        this._waypoints.push(...buf);
 
         // Send the request back to BE.
         const req = this.create_highlight_req(buf);
@@ -929,7 +945,7 @@ export class TileHandler {
         // If we didn't find any, also check waypoints we computed so far, as
         // long as they're within MAX_DISTANCE.
         if (best_item_id == null && this._mouse_handler.move == 'moving') {
-            for (let item of this.waypoints) {
+            for (let item of this._waypoints) {
                 let dist2 = sqr(item.x - x) + sqr(item.y - y);
                 if (dist2 >= min_dist2) continue;
 
@@ -953,7 +969,7 @@ export class TileHandler {
             for (let pt of this._canvas.querySelectorAll('.cr_dbgpt1, .cr_dbgpt2'))
                 pt.remove();
 
-            for (let item of this.waypoints) {
+            for (let item of this._waypoints) {
                 let pt = document.createElement('div');
                 // TODO: How to center this at the correct coordinate?
                 pt.style.top = item.y + 'px';
@@ -972,11 +988,11 @@ export class TileHandler {
 
         if (best_item_id != this._tile_set.highlight_item_id) {
             if (best_item_id != null) {
-                this.highlight_change_time = this._replayer.rel_time;
-                this.set_highlight(best_item_id, HIGHLIGHT_VIA_CANVAS);
+                this._highlight_change_time = this._replayer.rel_time;
+                this.set_highlight(best_item_id, HighlightType.VIA_CANVAS);
             }
             else {
-                this.highlight_change_time = null;
+                this._highlight_change_time = null;
                 this.clear_highlight();
             }
         }
@@ -1029,7 +1045,7 @@ export class TileHandler {
     // Enable highlight layer with the given item.
     //
     // `trigger_type` indicates how this highlight was triggered: either
-    // HIGHLIGHT_VIA_CANVAS or HIGHLIGHT_VIA_SEARCH.
+    // VIA_CANVAS or VIA_SEARCH.
     set_highlight(item_id, trigger_type) {
         this._replayer.log(`>>> Setting highlight to #${item_id} ...`);
         this._tile_set.set_highlight(item_id, trigger_type);
@@ -1044,10 +1060,10 @@ export class TileHandler {
             label.update_highlight(true);
         }
 
-        this.update_T = this._replayer.rel_time;
-        if (this.hide_cb) {
-            window.clearTimeout(this.hide_cb);
-            this.hide_cb = null;
+        this._update_T = this._replayer.rel_time;
+        if (this._hide_cb) {
+            window.clearTimeout(this._hide_cb);
+            this._hide_cb = null;
         }
         this._fg.style.visibility = 'visible';
     }
@@ -1082,23 +1098,23 @@ export class TileHandler {
     // for less than the given threshold.
     set_hide_cb(event_type, cb, threshold) {
         const rel_T = this._replayer.rel_time;
-        const elapsed = rel_T - this.update_T;
+        const elapsed = rel_T - this._update_T;
         this._replayer.log(
-            `now = ${rel_T} last update was ${this.update_T} ` +
+            `now = ${rel_T} last update was ${this._update_T} ` +
             `(elasped = ${elapsed}) vs. threshold = ${threshold}`);
         if (elapsed >= threshold) {
             cb();
             return;
         }
 
-        if (this.hide_cb) {
-            window.clearTimeout(this.hide_cb);
-            this.hide_cb = null;
+        if (this._hide_cb) {
+            window.clearTimeout(this._hide_cb);
+            this._hide_cb = null;
         }
 
         this._replayer.log(`hide_cb will fire in ${threshold - elapsed} ms.`);
         if (this._replayer.status != REPLAY_RUNNING) {
-            this.hide_cb = setTimeout(
+            this._hide_cb = setTimeout(
                 () => {
                     this._replayer.record_event(event_type, {});
                     cb();
@@ -1184,7 +1200,7 @@ export class TileHandler {
         let new_labels = msg_dict.labels;
         new_labels.push([ITEM_ID_SENTINEL, false, '', '']);
 
-        if (this._tile_set.highlight_trigger == HIGHLIGHT_VIA_SEARCH &&
+        if (this._tile_set.highlight_trigger == HighlightType.VIA_SEARCH &&
             this._highlighted_label != null) {
 
             this._highlighted_label.update_highlight(false);
@@ -1277,7 +1293,7 @@ export class TileHandler {
 
         const is_leave = (ev.type == 'mouseleave');
         if (!is_leave && !label.highlighted) {
-            this.set_highlight(label.item_id, HIGHLIGHT_VIA_SEARCH);
+            this.set_highlight(label.item_id, HighlightType.VIA_SEARCH);
 
             // Send request for missing tiles, if any.
             // TODO: This duplicates the logic of draw_prediction_line().
@@ -1364,6 +1380,7 @@ export class TileHandler {
         }
     }
 
+    // XXX TODO: simple assignments inside the constructor can be moved here!
     private _tile_replay_cb: ((tiles: Tile[]) => void) | null;
     private _tile_replay_buf: Tile[];
     private _replayer: EventReplayer;
@@ -1396,4 +1413,10 @@ export class TileHandler {
     private _inflight_reqs: Map;
     private _ack_seqs: number[];
     private _received_tiles: Tile[];
+
+    private _update_T: number | null = null;
+    private _hide_cb: number | null;
+    private _highlight_change_time: number | null = null;
+    private _mouse_hist: MouseHistItem[] = [];
+    private _waypoints: Waypoint[] = [];
 }

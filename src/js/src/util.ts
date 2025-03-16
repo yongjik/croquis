@@ -6,6 +6,11 @@ export const ZOOM_FACTOR = 1.5;  // Must match constants.h.
 export const ITEM_ID_SENTINEL = Number.MAX_SAFE_INTEGER;  // Used by Label.
 export const INFLIGHT_REQ_EXPIRE_MSEC = 5000;
 
+export enum HighlightType {
+    VIA_CANVAS = "canvas",
+    VIA_SEARCH = "search",
+}
+
 // TODO: Any way to generate a better assert message?
 export function assert(x: boolean, msg: string | null = null) {
     if (!x) {

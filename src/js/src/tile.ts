@@ -1,11 +1,15 @@
 // The tile itself.
 
-import { TILE_SIZE } from './util.js';
+import { AnyJson, BufList } from './types';
+import { TILE_SIZE } from './util';
 
 // A tile key does not contain `sm_version` because we want to use the latest
 // available version even if the "correct" (latest requested) version is not
 // available yet.
-export function tile_key(config_id, zoom_level, row, col, item_id = null) {
+export function tile_key(
+    config_id: number, zoom_level: number,
+    row: number, col: number, item_id?: number,
+) {
     if (item_id == null)
         return `${config_id}:${zoom_level}:${row}:${col}`;
     else
@@ -13,7 +17,7 @@ export function tile_key(config_id, zoom_level, row, col, item_id = null) {
 }
 
 export class Tile {
-    constructor(msg_dict, attachments) {
+    constructor(msg_dict: AnyJson, attachments: BufList) {
         const is_hover = 'item_id' in msg_dict;
 
         this.sm_version = msg_dict.sm_version;  // Selection map version.
@@ -25,9 +29,6 @@ export class Tile {
             this.item_id = msg_dict.item_id;
             this.label = msg_dict.label;
             this.style = msg_dict.style;
-        }
-        else {
-            this.item_id = this.label = this.style = null;
         }
 
         this.key = tile_key(this.config_id, this.zoom_level,
@@ -49,4 +50,19 @@ export class Tile {
     is_hover() {
         return this.item_id != null;
     }
+
+    sm_version: number;
+    config_id: number;
+    zoom_level: number;
+    row: number;
+    col: number;
+
+    item_id: number | null = null;
+    // XXX TODO: crosscheck with label.ts
+    label: string | null = null;
+    style: string | null = null;
+
+    key: string;
+    elem: Image;
+    hovermap: DataView | null = null;
 }

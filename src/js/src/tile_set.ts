@@ -1,64 +1,31 @@
 // Keeps track of the tiles currently being shown in the canvas.
 
-import { tile_key } from './tile.js';
+import { Ctxt } from './ctxt';
+import { tile_key } from './tile';
 import {
     assert,
+    HighlightType,
     LRUCache,
     TILE_SIZE
-} from './util.js';
+} from './util';
 
 const TILE_CACHE_MAXSIZE = 500;
 
+class ConfigReq {
+    constructor(
+        public config_id: number,
+        public width: number | null,
+        public height: number | null,
+    ) { }
+}
+
 export class TileSet {
-    constructor(ctxt) {
+    constructor(ctxt: Ctxt) {
         this.ctxt = ctxt;
-        this.canvas_id = ctxt.canvas_id;
-        this.canvas = document.querySelector(`#${this.canvas_id} .cr_canvas`);
-        this.inner_div = this.canvas.querySelector('.cr_inner');
-        this.fg = this.canvas.querySelector('.cr_foreground');
-
-        // Canvas config values: they're not initialized yet.
-        {
-            this.config_id = -1;
-            this.width = this.height = null;
-            this.x0 = this.y0 = this.x1 = this.y1 = null;
-            this.zoom_level = 0;
-
-            // Panning offset, using screen coordinate.  E.g., if offset is (10, 3),
-            // then the tiles are shifted 10 pixels to the right and 3 pixels down.
-            this.x_offset = this.y_offset = 0;
-
-            // The last requested canvas config: x0/y0/x1/y1 are not yet
-            // available because they're computed by BE.
-            this.last_config_req = {
-                config_id: -1,
-                width: null,
-                height: null,
-            };
-        }
-
-        // Current `SelectionMap` version: always even.
-        // Incremented by 2 whenever selection changes.
-        this.sm_version = 0;
-
-        this.highlight_item_id = null;
-
-        // Currently there are two ways highlight can be triggered: by hovering
-        // over the canvas, and hovering over the search result area.  We need
-        // to distinguish the two cases, because when the search result is
-        // updated, highlight should be updated (currently just cleared) only
-        // for the latter case.
-        //
-        // When highlight is off, this value should be also `null`.
-        this.highlight_trigger = null;
-
-        // Collection of tiles currently being shown.
-        this.visible_tiles = new Map();
-
-        // LRU Cache of tiles currently *not* being shown.
-        this.tile_cache = new LRUCache(
-            TILE_CACHE_MAXSIZE,
-            (oldv, newv) => oldv.sm_version < newv.sm_version);
+        this._ctxt_id = ctxt.ctxt_id;
+        this.canvas = document.querySelector(`#${this._ctxt_id} .cr_canvas`) as HTMLElement;
+        this.inner_div = this.canvas.querySelector('.cr_inner') as HTMLElement;
+        this.fg = this.canvas.querySelector('.cr_foreground') as HTMLElement;
     }
 
     // TODO: Too much duplicate code among reset_canvas(), resize_canvas(), and
@@ -69,7 +36,7 @@ export class TileSet {
         const new_config_id = this.last_config_req.config_id + 1;
         const w = Math.round(this.canvas.clientWidth);
         const h = Math.round(this.canvas.clientHeight);
-        console.log(`Reset canvas ${this.canvas_id} ` +
+        console.log(`Reset canvas ${this._ctxt_id} ` +
                     `config_id=${new_config_id} w=${w} h=${h}`);
 
         this.last_config_req = {
@@ -93,13 +60,13 @@ export class TileSet {
 
         if (w == this.last_config_req.width &&
             h == this.last_config_req.height) {
-            // console.log(`Not sending resize canvas msg ${this.canvas_id} ` +
+            // console.log(`Not sending resize canvas msg ${this._ctxt_id} ` +
             //             `size already matches w=${w} h=${h}.`);
             return;
         }
 
         const new_config_id = this.last_config_req.config_id + 1;
-        console.log(`Resize canvas ${this.canvas_id} ` +
+        console.log(`Resize canvas ${this._ctxt_id} ` +
                     `config_id=${new_config_id} w=${w} h=${h}`);
 
         this.last_config_req = {
@@ -138,7 +105,7 @@ export class TileSet {
         const new_config_id = this.last_config_req.config_id + 1;
         const w = Math.round(this.canvas.clientWidth);
         const h = Math.round(this.canvas.clientHeight);
-        console.log(`Zoom canvas ${this.canvas_id} ` +
+        console.log(`Zoom canvas ${this._ctxt_id} ` +
                     `config_id=${new_config_id} w=${w} h=${h}`);
 
         this.last_config_req = {
@@ -434,6 +401,58 @@ export class TileSet {
     new_sm_version() {
         return (this.sm_version += 2);
     }
+
+    private ctxt: Ctxt;
+    private _ctxt_id: string;
+    private canvas: HTMLElement;
+    private inner_div: HTMLElement;
+    private fg: HTMLElement;
+
+    //--------------------------------------------
+    // Canvas config values: initialized *after* the constructor.
+
+    private config_id: number = -1;
+    private width: number | null = null;
+    private height: number | null = null;
+    private x0: number | null = null;
+    private y0: number | null = null;
+    private x1: number | null = null;
+    private y1: number | null = null;
+    private zoom_level: number | null = null;
+
+    // Panning offset, using screen coordinate.  E.g., if offset is (10, 3),
+    // then the tiles are shifted 10 pixels to the right and 3 pixels down.
+    private x_offset: number | null = null;
+    private y_offset: number | null = null;
+
+    // The last requested canvas config: x0/y0/x1/y1 are not yet available
+    // because they're computed by BE.
+    private last_config_req = new ConfigReq(-1, null, null);
+
+    //--------------------------------------------
+
+    // Current `SelectionMap` version: always even.
+    // Incremented by 2 whenever selection changes.
+    private sm_version: number = 0;
+
+    private highlight_item_id: number | null = null;
+
+    // Currently there are two ways highlight can be triggered: by hovering
+    // over the canvas, and hovering over the search result area.  We need
+    // to distinguish the two cases, because when the search result is
+    // updated, highlight should be updated (currently just cleared) only
+    // for the latter case.
+    //
+    // When highlight is off, this value should be also `null`.
+    private highlight_trigger: HighlightType | null = null;
+
+    // Collection of tiles currently being shown.
+    private visible_tiles: Map<string, Tile> = new Map();
+
+    // LRU Cache of tiles currently *not* being shown.
+    private tile_cache: LRUCache<string, Tile> = new LRUCache(
+        TILE_CACHE_MAXSIZE,
+        (oldv, newv) => oldv.sm_version < newv.sm_version);
 
     tile_cache: LRUCache<Tile>;
 }

@@ -1,10 +1,8 @@
 // The "Context" that is associated with each figure.
 
-import { JSONObject } from '@lumino/coreutils';
-
 import type { CommWrapper } from './index';
 import { apply_template } from './template';
-import { BufList, Callback } from './types';
+import { AnyJson, BufList, Callback } from './types';
 
 // XXX TODO
 import { Tile } from './tile'
@@ -32,7 +30,7 @@ export abstract class Ctxt {
         return this._comm;
     }
 
-    protected abstract _callback(msg_dict: JSONObject, attachments: BufList): void;
+    protected abstract _callback(msg_dict: AnyJson, attachments: BufList): void;
 
     protected _node: HTMLElement;
     protected _ctxt_id: string;
@@ -118,14 +116,14 @@ class CtxtImpl extends Ctxt {
 
     // Helper function to send a message.
     // TODO: Do we need this wrapper?
-    send(msg: string, more_data: JSONObject | null): Promise<CommWrapper> {
-        let data = more_data || {};
+    send(msg: string, more_data?: AnyJson): Promise<CommWrapper> {
+        let data: AnyJson = more_data || {};
         data.msg = msg;
-        return this._comm.send(data);
+        return this._comm.then((comm) => comm.send(data));
     }
 
     // Handler for BE message.
-    protected _callback(msg_dict: JSONObject, attachments: BufList): void {
+    protected _callback(msg_dict: AnyJson, attachments: BufList): void {
     //  if (attachments.length) {
     //      this.dbglog('BE message with attachment: ', msg_dict,
     //                  'length = ', attachments.map(x => x.byteLength));
