@@ -245,7 +245,9 @@ export class TileHandler {
 
         this.ctxt = ctxt;
         this.tile_set = new TileSet(ctxt);
-        this.canvas = document.querySelector(`#${ctxt.canvas_id} .cr_canvas`);
+        this.canvas =
+            document.querySelector(`#${ctxt.canvas_id} .cr_canvas`)
+            as HTMLElement;
         this.axis_handler = new AxisHandler(ctxt, this);
         this.fg = this.canvas.querySelector('.cr_foreground');
 

@@ -412,18 +412,18 @@ export class TileSet {
     // Canvas config values: initialized *after* the constructor.
 
     private config_id: number = -1;
-    private width: number | null = null;
-    private height: number | null = null;
-    private x0: number | null = null;
-    private y0: number | null = null;
-    private x1: number | null = null;
-    private y1: number | null = null;
-    private zoom_level: number | null = null;
+    private width: number = -1;
+    private height: number = -1;
+    private x0: number = NaN;
+    private y0: number = NaN;
+    private x1: number = NaN;
+    private y1: number = NaN;
+    zoom_level: number = NaN;
 
     // Panning offset, using screen coordinate.  E.g., if offset is (10, 3),
     // then the tiles are shifted 10 pixels to the right and 3 pixels down.
-    private x_offset: number | null = null;
-    private y_offset: number | null = null;
+    x_offset: number = NaN;
+    y_offset: number = NaN;
 
     // The last requested canvas config: x0/y0/x1/y1 are not yet available
     // because they're computed by BE.
@@ -435,7 +435,7 @@ export class TileSet {
     // Incremented by 2 whenever selection changes.
     private sm_version: number = 0;
 
-    private highlight_item_id: number | null = null;
+    highlight_item_id: number | null = null;
 
     // Currently there are two ways highlight can be triggered: by hovering
     // over the canvas, and hovering over the search result area.  We need
@@ -444,15 +444,13 @@ export class TileSet {
     // for the latter case.
     //
     // When highlight is off, this value should be also `null`.
-    private highlight_trigger: HighlightType | null = null;
+    highlight_trigger: HighlightType | null = null;
 
     // Collection of tiles currently being shown.
-    private visible_tiles: Map<string, Tile> = new Map();
+    visible_tiles: Map<string, Tile> = new Map();
 
     // LRU Cache of tiles currently *not* being shown.
-    private tile_cache: LRUCache<string, Tile> = new LRUCache(
+    tile_cache: LRUCache<string, Tile> = new LRUCache(
         TILE_CACHE_MAXSIZE,
         (oldv, newv) => oldv.sm_version < newv.sm_version);
-
-    tile_cache: LRUCache<Tile>;
 }

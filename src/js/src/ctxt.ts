@@ -11,7 +11,9 @@ import { PROGRESSBAR_TIMEOUT } from './util';
 
 
 // Base class for the canvas context.
-export abstract class Ctxt {
+// To minimize coupling betweein Jupyter notebook and our code, index.ts only
+// depends on BaseCtxt and not Ctxt.
+export abstract class BaseCtxt {
     constructor(node: HTMLElement, ctxt_id: string,
                 get_comm: (callback: Callback) => Promise<CommWrapper>) {
         this._node = node;
@@ -37,7 +39,7 @@ export abstract class Ctxt {
     protected _comm: Promise<CommWrapper>;
 }
 
-class CtxtImpl extends Ctxt {
+export class Ctxt extends BaseCtxt {
     constructor(node: HTMLElement, ctxt_id: string,
                 get_comm: (callback: Callback) => Promise<CommWrapper>) {
         super(node, ctxt_id, get_comm);

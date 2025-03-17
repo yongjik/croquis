@@ -1,11 +1,18 @@
 // Utility class for recording and replaying events, for debugging.
 
 import { AnyJson } from './types';
-import { get_timestamp_str } from './util.js';
+import { get_timestamp_str } from './util';
 
-export const REPLAY_DISABLED = 0;
-export const REPLAY_RECORDING = 1;
-export const REPLAY_RUNNING = 2;
+export enum ReplayStatus {
+    DISABLED = "disabled",
+    RECORDING = "recording",
+    RUNNING = "running",
+}
+
+// XXX remove
+// export const REPLAY_DISABLED = 0;
+// export const REPLAY_RECORDING = 1;
+// export const REPLAY_RUNNING = 2;
 
 const REPLAY_SPEED = 0.2;
 
@@ -15,7 +22,7 @@ export class EventReplayer {
     // For each `event_type` in the record, fn_map[event_type] is a function
     // that takes a single dict as argument, and optionally returns a Promise
     // object that completes the callback.
-    constructor(btns_div, fn_map) {
+    constructor(btns_div: HTMLElement | null, fn_map) {
         this.btns_div = btns_div;
         if (btns_div == null) {
             this.enabled = false;  // We're disabled.
@@ -26,7 +33,7 @@ export class EventReplayer {
         this.status_area = btns_div.querySelector('span');
         this.fn_map = fn_map;
 
-        this.reset(REPLAY_DISABLED);
+        this.reset(ReplayStatus.DISABLED);
 
         // Hook up buttons for replay.
         let buttons = btns_div.querySelectorAll('button');
@@ -41,21 +48,21 @@ export class EventReplayer {
 
     clear() {
         if (!this.enabled) return;
-        this.reset(REPLAY_DISABLED);
+        this.reset(ReplayStatus.DISABLED);
         this.run_cb('reset', {}).then();
         this.status_area.textContent = '(Empty)';
     }
 
     start_recording() {
         if (!this.enabled) return;
-        this.reset(REPLAY_RECORDING);
+        this.reset(ReplayStatus.RECORDING);
         this.run_cb('reset', {}).then();
         this.status_area.textContent = 'Recording ...';
     }
 
     stop_recording() {
         if (!this.enabled) return;
-        this.status = REPLAY_DISABLED;
+        this.status = ReplayStatus.DISABLED;
         this.status_area.textContent = `Stopped: has ${this.events.length} events.`;
     }
 
@@ -125,10 +132,10 @@ export class EventReplayer {
     record_event(event_type: string, args: AnyJson) {
         if (!this.enabled) return;
 
-        if (this.status != REPLAY_RUNNING)
+        if (this.status != ReplayStatus.RUNNING)
             this.rel_time = Date.now() - this.start_T;
 
-        if (this.status != REPLAY_RECORDING) return;
+        if (this.status != ReplayStatus.RECORDING) return;
 
         const event_idx = this.events.length;
         const event_entry = [this.rel_time, event_type, args];
@@ -144,7 +151,7 @@ export class EventReplayer {
         if (!this.enabled) return;
 
         if (this.events.length > 0) {
-            this.reset(REPLAY_RUNNING);
+            this.reset(ReplayStatus.RUNNING);
             this.run_cb('reset', {}).then();
             this.replay_event(0);
         }
@@ -153,7 +160,7 @@ export class EventReplayer {
     replay_event(idx) {
         if (!this.enabled) return;
 
-        if (this.status != REPLAY_RUNNING) return;  // Reply disabled.
+        if (this.status != ReplayStatus.RUNNING) return;  // Reply disabled.
 
         const event_entry = this.events[idx];
         this.event_log.push(`${get_timestamp_str()} #${idx}: ` +
@@ -184,7 +191,7 @@ export class EventReplayer {
         .catch(error => {
             this.status_area.textContent =
                 `Error executing ${event_str}: ${error}`;
-            this.status = REPLAY_DISABLED;
+            this.status = ReplayStatus.DISABLED;
         });
     }
 
@@ -199,7 +206,7 @@ export class EventReplayer {
         this.start_T = Date.now();
         this.rel_time = 0;
 
-        if (status != REPLAY_RUNNING) this.events = [];
+        if (status != ReplayStatus.RUNNING) this.events = [];
         this.event_log = [];
         this.status = status;
     }
@@ -215,13 +222,21 @@ export class EventReplayer {
     log(...args) {
         if (!this.enabled) return;
 
-        if (this.status == REPLAY_DISABLED) return;
+        if (this.status == ReplayStatus.DISABLED) return;
         const rel_T =
-            (this.status == REPLAY_RUNNING) ? this.rel_time
+            (this.status == ReplayStatus.RUNNING) ? this.rel_time
                                             : Date.now() - this.start_T;
         const s = args.map(
             e => ((typeof(e) == 'object') ? JSON.stringify(e) : e)
         ).join(' ');
         this.event_log.push(`${get_timestamp_str()}    [${rel_T}] ${s}`);
     }
+
+    private enabled: boolean = false;
+    private btns_div: HTMLElement | null;
+    status: ReplayStatus = ReplayStatus.DISABLED;
+
+    private status_area: SpanElement;
+    private fn_map: any;  // XXX
+    rel_time: number | null = null;
 }

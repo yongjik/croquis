@@ -1,10 +1,10 @@
 // The main handler for canvas and tiles.
 
 import { AxisHandler } from './axis_handler';
-import { CanvasMouseHandler } from './canvas_mouse_handler';
+import { CanvasMouseHandler, MouseStatus } from './canvas_mouse_handler';
 import { Ctxt } from './ctxt';
 import { apply_css_tree, apply_flex, disable_drag } from './css_helper';
-import { EventReplayer, REPLAY_RUNNING } from './event_replayer';
+import { EventReplayer, ReplayStatus } from './event_replayer';
 import { Label } from './label';
 import { Tile } from './tile';
 import { TileSet } from './tile_set';
@@ -21,6 +21,8 @@ import {
     unhide,
     ZOOM_FACTOR,
 } from './util';
+
+// XXX add ": void" to void functions?
 
 // Axis area dimensions.
 const AXIS_WIDTH = 2;  // pixels
@@ -256,7 +258,8 @@ export class TileHandler {
         this._tile_replay_buf = [];
 
         // Initialize replay handler for debugging.
-        let btns_div = document.querySelector(`#${ctxt.ctxt_id}-btns`);
+        let btns_div =
+            document.querySelector(`#${ctxt.ctxt_id}-btns`) as HTMLElement;
         this._replayer = new EventReplayer(btns_div, {
             reset: () => {
                 this._tile_set.set_highlight(null, null);
@@ -280,7 +283,8 @@ export class TileHandler {
 
         this._ctxt = ctxt;
         this._tile_set = new TileSet(ctxt);
-        this._canvas = document.querySelector(`#${ctxt.ctxt_id} .cr_canvas`) as HTMLElement;
+        this._canvas =
+            document.querySelector(`#${ctxt.ctxt_id} .cr_canvas`) as HTMLElement;
         this._axis_handler = new AxisHandler(ctxt, this);
         this._fg = this._canvas.querySelector('.cr_foreground') as HTMLElement;
 
@@ -472,7 +476,7 @@ export class TileHandler {
         const keys = tiles.map(elem => elem.key);
         this._replayer.record_event('tile', {keys: keys});
 
-        if (this._replayer.status == REPLAY_RUNNING) {
+        if (this._replayer.status == ReplayStatus.RUNNING) {
             if (this._tile_replay_cb) this._tile_replay_cb(tiles);
         }
         else
@@ -481,7 +485,9 @@ export class TileHandler {
 
     // During replay, generate a tile request for keys[idx].  Set up
     // `_tile_replay_cb` to handle the received tile.
-    tile_replay_handler(resolve, keys, idx) {
+    tile_replay_handler(
+        resolve: (_: boolean) => void, keys: string[], idx: number
+    ) {
         if (idx == keys.length) {
             this.register_tile_internal(this._tile_replay_buf);
             this._tile_replay_cb = null;
@@ -520,7 +526,7 @@ export class TileHandler {
         });
     }
 
-    register_tile_internal(tiles) {
+    register_tile_internal(tiles: Tile[]) {
         let has_hover = false;
         for (let tile of tiles) {
             this._replayer.log(`Adding tile: ${tile.key}`);
@@ -551,7 +557,7 @@ export class TileHandler {
         // TileHandler.handle_mouse_stop() and recompute_highlight().  So, we
         // may end up calling recompute_highlight() again below.  Need to clean
         // up the code!
-        if (this._mouse_handler.move == 'stopped') {
+        if (this._mouse_handler.move == MouseStatus.STOPPED) {
             console.log('BBB calling stopped handler!!');
             this._mouse_handler.mouse_handler_cb('stopped');
             return;
@@ -572,7 +578,7 @@ export class TileHandler {
         }
     }
 
-    handle_panning(x_offset, y_offset) {
+    handle_panning(x_offset: number, y_offset: number) {
         this._tile_set.pan(x_offset, y_offset);
         this.request_new_tiles();
 
@@ -582,7 +588,7 @@ export class TileHandler {
 
     // The mouse cursor is not moving: ask highlight tiles for exactly under the
     // cursor.
-    handle_mouse_stop(x, y) {
+    handle_mouse_stop(x: number, y: number) {
         this._replayer.log(`handle_mouse_stop: ${x} ${y}`);
         let item_id = this._tile_set.get_highlight_id(x, y);
         if (item_id == 'unknown') return;
@@ -593,7 +599,7 @@ export class TileHandler {
         if (req == null) return;
 
         this._replayer.log('Mouse stopped, highlight_req:', req);
-        if (this._replayer.status != REPLAY_RUNNING) {
+        if (this._replayer.status != ReplayStatus.RUNNING) {
             this._ctxt.send('tile_req', req);
 
             if (req.throttled) {
@@ -606,9 +612,9 @@ export class TileHandler {
     // On Linux, seems like mousemove callback is called roughly every ~10ms
     // on Chrome and ~15ms on Firefox.  So it should be OK to just update
     // history every time we get this callback.
-    update_mouse_history(x, y) {
+    update_mouse_history(x: number, y: number) {
         let mouse_hist = this._mouse_hist;
-        const rel_T: number = this._replayer.rel_time;
+        const rel_T: number = this._replayer.rel_time as number;
         const last_T: number =
             (mouse_hist.length) ? mouse_hist[mouse_hist.length - 1].t : 0;
         const new_item = new MouseHistItem(rel_T, x, y);
@@ -692,26 +698,26 @@ export class TileHandler {
 
     // Traverse a straight line between (x0, y0) and (x1, y1), check the
     // hovermap data, and add candidate waypoints.
-    draw_prediction_line(x0, y0, x1, y1) {
+    draw_prediction_line(x0: number, y0: number, x1: number, y1: number) {
         this._replayer.log(
-            'draw_prediction_line() called: ' +
+            "draw_prediction_line() called: " +
             `x0=${x0.toFixed(2)} y0=${y0.toFixed(2)} ` +
             `x1=${x1.toFixed(2)} y1=${y1.toFixed(2)}`);
 
         if (Math.abs(x1 - x0) + Math.abs(y1 - y0) < 1.0) return;
 
-        let buf = [];  // Buffer of waypoints.
+        let buf: Waypoint[] = [];  // Buffer of waypoints.
         let item_cnt = 0;  // Number of differently highlighted regions.
 
         // Visit pixel (x, y) - return `true` if we want to continue.
-        let visit = (x, y) => {
+        let visit = (x: number, y: number) => {
             x = Math.round(x); y = Math.round(y);
             const item_id = this._tile_set.get_highlight_id(x, y);
 
             if (item_id == 'unknown')
                 return false;  // We have missing data: bail out.
 
-            const item = {x: x, y: y, item_id: item_id};
+            const item = new Waypoint(x, y, item_id);
 
             // If this is a new `item_id`, then append to the buffer.
             if (buf.length == 0 || buf[buf.length - 1].item_id != item_id) {
@@ -736,7 +742,7 @@ export class TileHandler {
                 return true;
             }
 
-            let dist2 = sqr(penult.x - x) + sqr(penult.y - y);
+            let dist2 = sqr(penult.x as number - x) + sqr(penult.y as number - y);
             if (dist2 < sqr(MAX_PREDICTION_LINE_STEP)) {
                 buf[buf.length - 1] = item;
                 return true;
@@ -797,7 +803,7 @@ export class TileHandler {
 
             // If the replay is running, we already have previously recorded
             // tile response events which are replayed via event handlers.
-            if (this._replayer.status != REPLAY_RUNNING)
+            if (this._replayer.status != ReplayStatus.RUNNING)
                 this._ctxt.send('tile_req', req);
         }
     }
@@ -810,7 +816,7 @@ export class TileHandler {
     // there's obviously no meaningful coordinate inside the search area.
     //
     // See messages.txt for `tile_req` message format.
-    create_highlight_req(waypoints) {
+    create_highlight_req(waypoints: Waypoint[]) {
         this._replayer.log('create_highlight_req: currently has ' +
                           `${this._inflight_reqs.size} in-flight requests.`);
         this.expire_old_requests();
@@ -825,7 +831,7 @@ export class TileHandler {
                 prio_coords.set(waypoint.item_id, new Set());
             }
 
-            if ('x' in waypoint) {
+            if (waypoint.x != null) {
                 const [row, col] =
                     this._tile_set.get_tile_coord(waypoint.x, waypoint.y);
                 prio_coords.get(waypoint.item_id).add(`${row}:${col}`);
@@ -1113,7 +1119,7 @@ export class TileHandler {
         }
 
         this._replayer.log(`hide_cb will fire in ${threshold - elapsed} ms.`);
-        if (this._replayer.status != REPLAY_RUNNING) {
+        if (this._replayer.status != ReplayStatus.RUNNING) {
             this._hide_cb = setTimeout(
                 () => {
                     this._replayer.record_event(event_type, {});
@@ -1303,7 +1309,7 @@ export class TileHandler {
 
                 // If the replay is running, we already have previously recorded
                 // tile response events which are replayed via event handlers.
-                if (this._replayer.status != REPLAY_RUNNING)
+                if (this._replayer.status != ReplayStatus.RUNNING)
                     this._ctxt.send('tile_req', req);
             }
         }

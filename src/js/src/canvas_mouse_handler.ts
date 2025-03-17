@@ -1,14 +1,23 @@
 // Encapsulates mouse interaction inside the canvas.
 
-import { REPLAY_RUNNING } from './event_replayer.js';
-import { assert, sqr } from './util.js';
+import type { TileHandler} from './tile_handler';
+import { ReplayStatus } from './event_replayer';
+import { assert, sqr } from './util';
 
 const MOUSE_STOP_THRESHOLD_MSEC = 30.0;
 const MIN_SELECT_AREA_DIAG = 5;  // pixels
 
+export enum MouseStatus {
+    STOPPED = "stopped",
+    MOVING = "moving",
+    OUTSIDE = "outside",
+};
+
 export class CanvasMouseHandler {
-    constructor(parent, replayer, canvas) {
-        this.parent = parent;  // TileHandler.
+    constructor(
+        parent: TileHandler, replayer: EventReplayer, canvas: HTMLElement,
+    ) {
+        this.parent = parent;
         this.replayer = replayer;
         this.canvas = canvas;
         this.zoom_radio_btn =
@@ -16,7 +25,8 @@ export class CanvasMouseHandler {
         this.select_area = this.canvas.querySelector('.cr_select_area');
 
         this.mouse_stopped_cb = null;
-        this.move = 'moving';
+        // XXX remove!
+        // this.move = 'moving';
         this.reset();
 
         this.mouse_x = null;
@@ -26,7 +36,7 @@ export class CanvasMouseHandler {
         for (let evname of ['mousedown', 'mouseleave',
                             'mousemove', 'mouseup']) {
             this.canvas.addEventListener(evname, (ev) => {
-                if (this.replayer.status == REPLAY_RUNNING) return;
+                if (this.replayer.status == ReplayStatus.RUNNING) return;
 
                 let rect = this.canvas.getBoundingClientRect();
                 this.mouse_x = ev.clientX - rect.left;
@@ -196,7 +206,7 @@ export class CanvasMouseHandler {
     // Enqueue "mouse stopped" callback which will be called if the mouse cursor
     // doesn't move for MOUSE_STOP_THRESHOLD_MSEC.
     enqueue_mouse_stop_cb() {
-        if (this.replayer.status != REPLAY_RUNNING) {
+        if (this.replayer.status != ReplayStatus.RUNNING) {
             this.mouse_stopped_cb =
                 setTimeout(() => this.mouse_handler_cb('stopped'),
                            MOUSE_STOP_THRESHOLD_MSEC);
@@ -228,4 +238,13 @@ export class CanvasMouseHandler {
     toString() {
         return this.btn + '-' + this.move;
     }
+
+    private parent: TileHandler;
+    private replayer: EventReplayer;
+    private canvas: HTMLElement;
+
+    private zoom_radio_btn: HTMLElement;
+    private select_area: HTMLElement;
+    private mouse_stopped_cb: any = null;  // XXX
+    move: MouseStatus = MouseStatus.MOVING;
 }

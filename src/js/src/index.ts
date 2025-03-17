@@ -13,7 +13,7 @@ import { JSONObject, ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import { Widget } from '@lumino/widgets';
 import { ICommMsgMsg } from '@jupyterlab/services/lib/kernel/messages';
 
-import { Ctxt, create_ctxt } from './ctxt';
+import { BaseCtxt, create_ctxt } from './ctxt';
 import { BufList, Callback } from './types';
 
 // Mime type used for this extension.
@@ -202,7 +202,7 @@ export class MyJextWidget extends Widget implements IRenderMime.IRenderer {
 
     private _registry: KernelRegistry;
     private _ctxt_id: string | null = null;
-    private _ctxt: Ctxt | null = null;
+    private _ctxt: BaseCtxt | null = null;
     //  private _comm: Promise<CommWrapper> | null = null;
 }
 
