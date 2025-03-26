@@ -300,7 +300,7 @@ export class TileHandler {
 
         this._search_result_area = qs('.cr_search_result') as HTMLElement;
         // Keeps track of labels in the search result area.
-        this._labels = [new Label(ITEM_ID_SENTINEL, false, null, null, null)];
+        this._labels = [new Label(ITEM_ID_SENTINEL, false, "", "", null)];
         this._label_map = new Map();
         this._highlighted_label = null;
 
@@ -329,7 +329,9 @@ export class TileHandler {
 
         (this._btn_regex = qs('.cr_regex') as HTMLElement).addEventListener(
             'change', (ev) => this.search_handler(ev));
-        (this._btn_autoselect = qs('.cr_autoselect') as HTMLElement).addEventListener(
+        (
+            this._btn_autoselect = qs('.cr_autoselect') as HTMLInputElement
+        ).addEventListener(
             'change', (ev) => this.autoselect_handler(ev));
 
         this._btn_popup = new PopupBox(qs('.cr_btn_popup') as HTMLElement);
@@ -464,7 +466,7 @@ export class TileHandler {
         if (this._received_tiles.length == 1) {
             // Enable register_tile_cb(): it will process all tiles pushed into
             // `received_tiles` before it executes.
-            setTimeout(() => { this.register_tile_cb() }, 0);
+            window.setTimeout(() => { this.register_tile_cb() }, 0);
         }
     }
 
@@ -845,7 +847,9 @@ export class TileHandler {
         }
 
         let throttled = false;
-        let fill_tile_reqs = (tile_req_buf, item_id, is_prio) => {
+        let fill_tile_reqs = (
+            tile_req_buf: string[], item_id: number, is_prio: boolean
+        ) => {
             for (let [row, col] of all_coords) {
                 const key = this._tile_set.tile_key(row, col, item_id);
                 if (this._tile_set.has_tile(key)) {
@@ -875,7 +879,7 @@ export class TileHandler {
 
         // First fill in all the priority tiles.
         for (let item_id of prio_coords.keys()) {
-            let buf = [];
+            let buf: string[] = [];
             fill_tile_reqs(buf, item_id, true /* is_prio */);
             if (buf.length > 0)
                 items.set(item_id, {id: item_id, prio: buf, reg: []});
@@ -883,7 +887,7 @@ export class TileHandler {
 
         // Now fill in all the rest.
         for (let item_id of prio_coords.keys()) {
-            let buf = [];
+            let buf: string[] = [];
             fill_tile_reqs(buf, item_id, false /* !is_prio */);
             if (buf.length == 0) continue;
 
@@ -909,7 +913,10 @@ export class TileHandler {
     // one right under the mouse cursor, if the data is not available yet).
     // Then update highlight if necessary.
     recompute_highlight() {
-        const [x, y] = [this._mouse_handler.mouse_x, this._mouse_handler.mouse_y];
+        const [x, y] = [
+            this._mouse_handler.mouse_x as number,
+            this._mouse_handler.mouse_y as number,
+        ];
         const [row, col] = this._tile_set.get_tile_coord(x, y);
 
         this._replayer.log(
@@ -952,7 +959,7 @@ export class TileHandler {
         // long as they're within MAX_DISTANCE.
         if (best_item_id == null && this._mouse_handler.move == 'moving') {
             for (let item of this._waypoints) {
-                let dist2 = sqr(item.x - x) + sqr(item.y - y);
+                let dist2 = sqr(item.x as number - x) + sqr(item.y as number - y);
                 if (dist2 >= min_dist2) continue;
 
                 const key = this._tile_set.tile_key(row, col, item.item_id);
@@ -985,7 +992,7 @@ export class TileHandler {
                     pt.textContent = 'N';
                 } else {
                     pt.classList.add('cr_dbgpt2');
-                    pt.textContent = item.item_id;
+                    pt.textContent = (item.item_id as number).toString();
 
                 }
                 this._canvas.appendChild(pt);
@@ -1052,7 +1059,7 @@ export class TileHandler {
     //
     // `trigger_type` indicates how this highlight was triggered: either
     // VIA_CANVAS or VIA_SEARCH.
-    set_highlight(item_id, trigger_type) {
+    set_highlight(item_id: number, trigger_type: HighlightType) {
         this._replayer.log(`>>> Setting highlight to #${item_id} ...`);
         this._tile_set.set_highlight(item_id, trigger_type);
 
@@ -1102,9 +1109,9 @@ export class TileHandler {
 
     // To avoid flapping, we don't immediately clear highlighting if it was on
     // for less than the given threshold.
-    set_hide_cb(event_type, cb, threshold) {
-        const rel_T = this._replayer.rel_time;
-        const elapsed = rel_T - this._update_T;
+    set_hide_cb(event_type: string, cb: () => void, threshold: number) {
+        const rel_T = this._replayer.rel_time as number;
+        const elapsed = rel_T - this._update_T!;
         this._replayer.log(
             `now = ${rel_T} last update was ${this._update_T} ` +
             `(elasped = ${elapsed}) vs. threshold = ${threshold}`);
@@ -1120,7 +1127,7 @@ export class TileHandler {
 
         this._replayer.log(`hide_cb will fire in ${threshold - elapsed} ms.`);
         if (this._replayer.status != ReplayStatus.RUNNING) {
-            this._hide_cb = setTimeout(
+            this._hide_cb = window.setTimeout(
                 () => {
                     this._replayer.record_event(event_type, {});
                     cb();
@@ -1130,7 +1137,7 @@ export class TileHandler {
         }
     }
 
-    autoselect_handler(ev) {
+    autoselect_handler(ev: Event) {
         if (this._btn_autoselect.checked) {
             // Select all currently shown labels.
             for (let label of this._labels) {
@@ -1151,7 +1158,7 @@ export class TileHandler {
 
     // If (ev == null) then we're being called manually by Ctxt: then we don't
     // need to update version because this should be the first call.
-    search_handler(ev) {
+    search_handler(ev: Event) {
         if (ev != null && this._btn_autoselect.checked) {
             this._ctxt.send('search', {
                 version: this._tile_set.new_sm_version(),
@@ -1407,7 +1414,7 @@ export class TileHandler {
     private _highlighted_label: Label | null:
 
     private _btn_regex: HTMLElement;
-    private _btn_autoselect: HTMLElement;
+    private _btn_autoselect: HTMLInputElement;
     private _btn_popup: PopupBox;
     private _btn_select_matching: HTMLElement;
     private _btn_deselect_matching: HTMLElement;

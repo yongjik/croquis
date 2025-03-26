@@ -8,9 +8,15 @@ const MOUSE_STOP_THRESHOLD_MSEC = 30.0;
 const MIN_SELECT_AREA_DIAG = 5;  // pixels
 
 export enum MouseStatus {
-    STOPPED = "stopped",
-    MOVING = "moving",
-    OUTSIDE = "outside",
+    STOPPED = "stopped",  // mouse has stopped
+    MOVING  = "moving",   // mouse is moving
+    OUTSIDE = "outside",  // mouse is outside the canvas
+};
+
+export enum ButtonStatus {
+    UP   = "up",    // left button not pressed
+    ZOOM = "zoom",  // left burron pressed for "select to zoom"
+    PAN  = "pan",   // left burron pressed for panning
 };
 
 export class CanvasMouseHandler {
@@ -29,10 +35,6 @@ export class CanvasMouseHandler {
         // this.move = 'moving';
         this.reset();
 
-        this.mouse_x = null;
-        this.mouse_y = null;
-        this.mouse_btns = 0;
-
         for (let evname of ['mousedown', 'mouseleave',
                             'mousemove', 'mouseup']) {
             this.canvas.addEventListener(evname, (ev) => {
@@ -49,25 +51,14 @@ export class CanvasMouseHandler {
     }
 
     reset() {
-        // Button state: up (left button not pressed)
-        //               zoom (left button pressed for "select to zoom")
-        //               pan (left button pressed for panning)
-        this.btn = 'up';
+        this.btn = ButtonStatus.UP;
 
-        // Movement state: moving (mouse is moving)
-        //                 stopped (mouse has stopped)
-        //                 outside (mouse is outside the canvas)
-        //
         // Since this is also called by TileHandler.register_canvas_config(), we
-        // want to keep mouse status if it's 'stopped': otherwise highlight
+        // want to keep mouse status if it's STOPPED: otherwise highlight
         // handling will be wrong.
-        if (this.move != 'stopped') this.move = 'moving';
+        if (this.move != MouseStatus.STOPPED) this.move = MouseStatus.MOVING;
 
-        // Mouse position when we started either "select and zoom" or panning.
-        // (When this.btn == 'up', this value has no meaning.)
         this.start_x = this.start_y = null;
-
-        // Canvas offset when we started panning.
         this.x_offset0 = this.y_offset0 = null;
 
         this.clear_select_area();
@@ -105,7 +96,7 @@ export class CanvasMouseHandler {
         }
 
         if (evname == 'stopped') {
-            this.move = 'stopped';
+            this.move = MouseStatus.STOPPED;
             if (this.btn == 'up') {
                 this.parent.handle_mouse_stop(x, y);
                 this.parent.recompute_highlight();
@@ -208,7 +199,7 @@ export class CanvasMouseHandler {
     enqueue_mouse_stop_cb() {
         if (this.replayer.status != ReplayStatus.RUNNING) {
             this.mouse_stopped_cb =
-                setTimeout(() => this.mouse_handler_cb('stopped'),
+                window.setTimeout(() => this.mouse_handler_cb('stopped'),
                            MOUSE_STOP_THRESHOLD_MSEC);
         }
     }
@@ -246,5 +237,19 @@ export class CanvasMouseHandler {
     private zoom_radio_btn: HTMLElement;
     private select_area: HTMLElement;
     private mouse_stopped_cb: any = null;  // XXX
+
     move: MouseStatus = MouseStatus.MOVING;
+    private btn: ButtonStatus = ButtonStatus.UP;
+    mouse_x: number | null = null;
+    mouse_y: number | null = null;
+    mouse_btns: number | null = 0;
+
+    // Mouse position when we started either "select and zoom" or panning.
+    // (When this.btn == UP, this value has no meaning.)
+    private start_x: number | null = null;
+    private start_y: number | null = null;
+
+    // Canvas offset when we started panning.
+    private x_offset0: number | null = null;
+    private y_offset0: number | null = null;
 }

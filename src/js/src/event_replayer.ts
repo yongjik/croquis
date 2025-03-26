@@ -78,7 +78,7 @@ export class EventReplayer {
         a.download = 'event_log.txt';
         document.body.appendChild(a);
         a.click();
-        setTimeout(() => {
+        window.setTimeout(() => {
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
         }, 0);
@@ -183,7 +183,7 @@ export class EventReplayer {
             // based on the current time - in this way we can set breakpoints in
             // dev tools and continue debugfging.
             let next_rel_T = this.events[idx][0];
-            setTimeout(() => { this.replay_event(idx) },
+            window.setTimeout(() => { this.replay_event(idx) },
                        (next_rel_T - this.rel_time) / REPLAY_SPEED);
 
             this.status_area.textContent = `Executed ${event_str}.`;

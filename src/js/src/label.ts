@@ -8,7 +8,11 @@ const LABEL_MARKER_SIZE_MAX = 8;  // px
 const LABEL_LINE_WIDTH_MAX = 5;  // px
 
 export class Label {
-    constructor(item_id, selected, label, style, cb) {
+    // See message "labels" in //src/doc/messages.txt
+    constructor(
+        item_id: number, selected: boolean, label: string, style: string,
+        cb
+    ) {
         this.item_id = item_id;
         this.selected = selected;
         this.label = label;
@@ -97,4 +101,8 @@ export class Label {
 
         return svg;
     }
+
+    item_id: number;
+    private elem: HTMLElement;
+    checkbox: HTMLInputElement;
 }

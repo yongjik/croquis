@@ -52,7 +52,7 @@ export class PopupBox {
         this._listener = (ev: MouseEvent): void => {
             if (!this._target.contains(ev.target as Node)) this.hide();
         };
-        setTimeout(() => {
+        window.setTimeout(() => {
             if (this._listener) {
                 document.addEventListener('click', this._listener);
             }

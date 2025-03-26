@@ -393,7 +393,7 @@ export class TileSet {
     }
 
     // Utility function.
-    tile_key(row, col, item_id = null) {
+    tile_key(row: number, col: number, item_id?: number) {
         return tile_key(this.config_id, this.zoom_level, row, col, item_id);
     }
 
@@ -411,7 +411,7 @@ export class TileSet {
     //--------------------------------------------
     // Canvas config values: initialized *after* the constructor.
 
-    private config_id: number = -1;
+    config_id: number = -1;
     private width: number = -1;
     private height: number = -1;
     private x0: number = NaN;

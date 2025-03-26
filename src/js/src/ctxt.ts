@@ -77,7 +77,7 @@ export class Ctxt extends BaseCtxt {
         this._tile_handler.search_handler(null);
 
         // Prepare the progress indicator to fire if BE takes too long.
-        setTimeout(() => {
+        window.setTimeout(() => {
             let bar = node.querySelector("div.cr_progressbar");
             if (bar) bar.style.visibility = "visible";
         }, PROGRESSBAR_TIMEOUT);
