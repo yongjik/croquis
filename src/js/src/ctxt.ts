@@ -78,7 +78,7 @@ export class Ctxt extends BaseCtxt {
 
         // Prepare the progress indicator to fire if BE takes too long.
         window.setTimeout(() => {
-            let bar = node.querySelector("div.cr_progressbar");
+            let bar = node.querySelector("div.cr_progressbar") as HTMLElement;
             if (bar) bar.style.visibility = "visible";
         }, PROGRESSBAR_TIMEOUT);
 
@@ -113,7 +113,6 @@ export class Ctxt extends BaseCtxt {
     // Cleanup handler: tell the server that this canvas is gone.
     dispose() {
         this.send('cell_fini');
-        delete this.env.ctxt_map[this._ctxt_id];
     }
 
     // Helper function to send a message.
@@ -142,7 +141,7 @@ export class Ctxt extends BaseCtxt {
         }
         else if (msg_dict.msg == 'tile') {
             let tile = new Tile(msg_dict, attachments);
-            let seqs = msg_dict.seqs.split(':').map(x => parseInt(x));
+            let seqs = msg_dict.seqs.split(':').map((x: string) => parseInt(x));
             // console.log(`Received tile: ${tile.key}`);
             this._tile_handler.register_tile(tile, seqs);
         }
@@ -159,7 +158,7 @@ export class Ctxt extends BaseCtxt {
     }
 
     // Helper function for debug logging.
-    dbglog(...args) {
+    dbglog(...args: any[]) {
         if (this._log_area) {
             const s = args.map(
                 e => ((typeof(e) == 'object') ? JSON.stringify(e) : e)

@@ -10,14 +10,12 @@ const LABEL_LINE_WIDTH_MAX = 5;  // px
 export class Label {
     // See message "labels" in //src/doc/messages.txt
     constructor(
-        item_id: number, selected: boolean, label: string, style: string,
-        cb
+        public item_id: number,
+        public selected: boolean,
+        public label: string,
+        public style: string,
+        cb: ((label: Label, ev: Event) => void) | null,
     ) {
-        this.item_id = item_id;
-        this.selected = selected;
-        this.label = label;
-        this.style = style;
-
         if (item_id == ITEM_ID_SENTINEL) {
             // This must be `null`, because its value is used as an argument to
             // search_result_area.insertBefore() inside TileHandler.
@@ -36,9 +34,7 @@ export class Label {
 
         this.elem.appendChild(document.createTextNode(this.label));
 
-        this.highlighted = false;
-
-        let cb2 = (ev) => cb(this, ev);
+        let cb2 = (ev: Event) => cb(this, ev);
         this.elem.addEventListener('mouseenter', cb2);
         this.elem.addEventListener('mousemove', cb2);
         this.elem.addEventListener('mouseleave', cb2);
@@ -102,7 +98,8 @@ export class Label {
         return svg;
     }
 
-    item_id: number;
-    private elem: HTMLElement;
+    // XXX item_id: number;
+    elem: HTMLElement;
     checkbox: HTMLInputElement;
+    highlighted: boolean = false;
 }

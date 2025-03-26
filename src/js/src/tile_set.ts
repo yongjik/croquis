@@ -433,7 +433,7 @@ export class TileSet {
 
     // Current `SelectionMap` version: always even.
     // Incremented by 2 whenever selection changes.
-    private sm_version: number = 0;
+    sm_version: number = 0;
 
     highlight_item_id: number | null = null;
 

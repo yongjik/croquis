@@ -262,8 +262,8 @@ export class TileHandler {
             document.querySelector(`#${ctxt.ctxt_id}-btns`) as HTMLElement;
         this._replayer = new EventReplayer(btns_div, {
             reset: () => {
-                this._tile_set.set_highlight(null, null);
-                this._tile_set.tile_cache.clear();
+                this.tile_set.set_highlight(null, null);
+                this.tile_set.tile_cache.clear();
                 this.reset_state();
             },
 
@@ -282,16 +282,16 @@ export class TileHandler {
         });
 
         this._ctxt = ctxt;
-        this._tile_set = new TileSet(ctxt);
+        this.tile_set = new TileSet(ctxt);
         this._canvas =
             document.querySelector(`#${ctxt.ctxt_id} .cr_canvas`) as HTMLElement;
-        this._axis_handler = new AxisHandler(ctxt, this);
+        this.axis_handler = new AxisHandler(ctxt, this);
         this._fg = this._canvas.querySelector('.cr_foreground') as HTMLElement;
 
         this._mouse_handler =
             new CanvasMouseHandler(this, this._replayer, this._canvas);
         this._tooltip = qs('.cr_tooltip') as HTMLElement;
-        this._nearest_pts = new NearestPts();
+        this.nearest_pts = new NearestPts();
 
         // TODO: Support replay?
         this._searchbox = qs('.cr_searchbox input') as HTMLInputElement;
@@ -299,40 +299,36 @@ export class TileHandler {
             'input', (ev) => this.search_handler(ev));
 
         this._search_result_area = qs('.cr_search_result') as HTMLElement;
-        // Keeps track of labels in the search result area.
-        this._labels = [new Label(ITEM_ID_SENTINEL, false, "", "", null)];
-        this._label_map = new Map();
-        this._highlighted_label = null;
 
         let ctrl_elem =
             document.querySelector(`#${ctxt.ctxt_id} .cr_ctrl_panel`) as HTMLElement;
         let qs_ctrl = (selector: string) => ctrl_elem.querySelector(selector);
         qs_ctrl('.cr_home_btn')!.addEventListener('click', (ev) => {
-            this._tile_set.reset_canvas();
+            this.tile_set.reset_canvas();
         });
         qs_ctrl('.cr_zoom_in_btn')!.addEventListener('click', (ev) => {
-            this._tile_set.zoom_level++;
-            this._tile_set.x_offset *= ZOOM_FACTOR;
-            this._tile_set.y_offset *= ZOOM_FACTOR;
-            this._tile_set.refresh();
-            this._axis_handler.update_location(true);
+            this.tile_set.zoom_level++;
+            this.tile_set.x_offset *= ZOOM_FACTOR;
+            this.tile_set.y_offset *= ZOOM_FACTOR;
+            this.tile_set.refresh();
+            this.axis_handler.update_location(true);
             this.request_new_tiles();
         });
         qs_ctrl('.cr_zoom_out_btn')!.addEventListener('click', (ev) => {
-            this._tile_set.zoom_level--;
-            this._tile_set.x_offset /= ZOOM_FACTOR;
-            this._tile_set.y_offset /= ZOOM_FACTOR;
-            this._tile_set.refresh();
-            this._axis_handler.update_location(true);
+            this.tile_set.zoom_level--;
+            this.tile_set.x_offset /= ZOOM_FACTOR;
+            this.tile_set.y_offset /= ZOOM_FACTOR;
+            this.tile_set.refresh();
+            this.axis_handler.update_location(true);
             this.request_new_tiles();
         });
 
-        (this._btn_regex = qs('.cr_regex') as HTMLElement).addEventListener(
-            'change', (ev) => this.search_handler(ev));
+        (
+            this._btn_regex = qs('.cr_regex') as HTMLInputElement
+        ).addEventListener('change', (ev) => this.search_handler(ev));
         (
             this._btn_autoselect = qs('.cr_autoselect') as HTMLInputElement
-        ).addEventListener(
-            'change', (ev) => this.autoselect_handler(ev));
+        ).addEventListener('change', (ev) => this.autoselect_handler(ev));
 
         this._btn_popup = new PopupBox(qs('.cr_btn_popup') as HTMLElement);
 
@@ -372,49 +368,7 @@ export class TileHandler {
 
         this._search_stat_area = qs('.cr_search_stat') as HTMLElement;
 
-        // Set to true if we couldn't send request to udpate tiles after
-        // selection change, because there were too many in-flight tiles.
-        this._tile_update_stalled = false;
-
         this.reset_state();
-
-        // Implements a rudimentary flow control, because apparently javascript
-        // is still much slower than BE --- so if we just send as many requests
-        // as possible then we can get overwhelmed by responses!
-        //
-        // So, we keep the list of requests until we get corresponding requests,
-        // and stop sending more requests if it goes over limit.
-        //
-        // Each tile request contains a unique increasing (sequence #).  Each
-        // tile response from BE indicates the sequence numbers that are no
-        // longer "in-flight": normally it will be the sequence number of the
-        // original request for the tile, but in case BE receives duplicate
-        // requests, it can just attach these "orphaned" seqnce numbers to the
-        // next outgoing response, because in the end what's important is the
-        // count of requests in flight.
-        //
-        // In-flight requests that are super-old are silently discarded, just in
-        // case we have network issues or something similar.  (Not sure if we
-        // need this...)
-        //
-        // Key is (sequence #), value is timestamp.
-        //
-        // TODO: Also implement deduplication on FE?  It doesn't make much sense
-        //       to send duplicate tile requests so that BE can ignore it ...
-        this._next_seq = 0;
-        this._inflight_reqs = new Map();
-
-        // Sequence numbers of responses to acknowledge: piggybacks on the next
-        // request.
-        this._ack_seqs = [];
-
-        // Tiles that are received but not processed yet.
-        //
-        // Apparently, processing each tile one by one can hog the CPU, until
-        // tiles are queued up for multiple seconds(!!) before processing.  This
-        // is clearly unacceptable.  So, we enqueue received tiles here so that
-        // multiple tiles can be processed at once.
-        this._received_tiles = [];
     }
 
     // Utility function for initializing/resetting internal state.
@@ -442,11 +396,11 @@ export class TileHandler {
         // TODO: Event replay is not written yet.
         this._replayer.record_event('canvas', msg_dict);
 
-        if (this._tile_set.add_config(msg_dict)) {
+        if (this.tile_set.add_config(msg_dict)) {
             // Cancel any selection/zoom going on, just in case.
             this._mouse_handler.reset();
 
-            this._axis_handler.update(msg_dict);
+            this.axis_handler.update(msg_dict);
         }
     }
 
@@ -523,7 +477,7 @@ export class TileHandler {
 
         this._ctxt.send('tile_req', {
             ack_seqs: ack_seqs,
-            config: this._tile_set.current_canvas_config(),
+            config: this.tile_set.current_canvas_config(),
             items: [{id: item_id, prio: [`${row}:${col}:${next_seq}`], reg: []}]
         });
     }
@@ -532,12 +486,12 @@ export class TileHandler {
         let has_hover = false;
         for (let tile of tiles) {
             this._replayer.log(`Adding tile: ${tile.key}`);
-            this._tile_set.add_tile(tile);
+            this.tile_set.add_tile(tile);
             has_hover = has_hover || tile.is_hover();
         }
 
         // Remove progress bar (if exists).
-        if (this._tile_set.visible_tiles.size > 0) {
+        if (this.tile_set.visible_tiles.size > 0) {
             const bar = this._canvas.querySelector('.cr_progressbar');
             if (bar) bar.remove();
         }
@@ -570,9 +524,9 @@ export class TileHandler {
         if (has_hover) {
             // If highlight was triggered via search, just re-set the same
             // item_id: it will pick up any new tile if applicable.
-            if (this._tile_set.highlight_trigger == HighlightType.VIA_SEARCH) {
-                this._tile_set.set_highlight(
-                    this._tile_set.highlight_item_id, HighlightType.VIA_SEARCH);
+            if (this.tile_set.highlight_trigger == HighlightType.VIA_SEARCH) {
+                this.tile_set.set_highlight(
+                    this.tile_set.highlight_item_id, HighlightType.VIA_SEARCH);
             }
             else {
                 this.recompute_highlight();
@@ -581,18 +535,18 @@ export class TileHandler {
     }
 
     handle_panning(x_offset: number, y_offset: number) {
-        this._tile_set.pan(x_offset, y_offset);
+        this.tile_set.pan(x_offset, y_offset);
         this.request_new_tiles();
 
         // May send axis_req message if necessary.
-        this._axis_handler.update_location(false);
+        this.axis_handler.update_location(false);
     }
 
     // The mouse cursor is not moving: ask highlight tiles for exactly under the
     // cursor.
     handle_mouse_stop(x: number, y: number) {
         this._replayer.log(`handle_mouse_stop: ${x} ${y}`);
-        let item_id = this._tile_set.get_highlight_id(x, y);
+        let item_id = this.tile_set.get_highlight_id(x, y);
         if (item_id == 'unknown') return;
         this._replayer.log('current item_id = ', item_id);
 
@@ -714,7 +668,7 @@ export class TileHandler {
         // Visit pixel (x, y) - return `true` if we want to continue.
         let visit = (x: number, y: number) => {
             x = Math.round(x); y = Math.round(y);
-            const item_id = this._tile_set.get_highlight_id(x, y);
+            const item_id = this.tile_set.get_highlight_id(x, y);
 
             if (item_id == 'unknown')
                 return false;  // We have missing data: bail out.
@@ -822,7 +776,7 @@ export class TileHandler {
         this._replayer.log('create_highlight_req: currently has ' +
                           `${this._inflight_reqs.size} in-flight requests.`);
         this.expire_old_requests();
-        const all_coords = this._tile_set.get_all_tile_coords();
+        const all_coords = this.tile_set.get_all_tile_coords();
 
         // Map of "priority coordinates" (i.e., where the mouse cursor is
         // expected to pass) so that BE can compute them before others.
@@ -835,7 +789,7 @@ export class TileHandler {
 
             if (waypoint.x != null) {
                 const [row, col] =
-                    this._tile_set.get_tile_coord(waypoint.x, waypoint.y);
+                    this.tile_set.get_tile_coord(waypoint.x, waypoint.y);
                 prio_coords.get(waypoint.item_id).add(`${row}:${col}`);
             }
             else {
@@ -851,8 +805,8 @@ export class TileHandler {
             tile_req_buf: string[], item_id: number, is_prio: boolean
         ) => {
             for (let [row, col] of all_coords) {
-                const key = this._tile_set.tile_key(row, col, item_id);
-                if (this._tile_set.has_tile(key)) {
+                const key = this.tile_set.tile_key(row, col, item_id);
+                if (this.tile_set.has_tile(key)) {
                     // Nothing to do: we already have the tile!
                     // TODO: The tile may be evicted from the cache by the
                     // time we actually need it.  Do we have to take care of
@@ -903,7 +857,7 @@ export class TileHandler {
         this._ack_seqs = [];
         return {
             ack_seqs: ack_seqs,
-            config: this._tile_set.current_canvas_config(),
+            config: this.tile_set.current_canvas_config(),
             items: Array.from(items.values()),
             throttled: throttled,
         };
@@ -917,7 +871,7 @@ export class TileHandler {
             this._mouse_handler.mouse_x as number,
             this._mouse_handler.mouse_y as number,
         ];
-        const [row, col] = this._tile_set.get_tile_coord(x, y);
+        const [row, col] = this.tile_set.get_tile_coord(x, y);
 
         this._replayer.log(
             `recompute_highlight() called: ` +
@@ -940,12 +894,12 @@ export class TileHandler {
             for (let yy = iy - r; yy <= iy + r; yy++) {
                 const dist2 = sqr(x - xx) + sqr(y - yy);
                 if (dist2 >= min_dist2) continue;
-                const item_id = this._tile_set.get_highlight_id(xx, yy);
+                const item_id = this.tile_set.get_highlight_id(xx, yy);
                 if (item_id == null || item_id == 'unknown') continue;
 
-                const key = this._tile_set.tile_key(row, col, item_id);
-                if (this._tile_set.has_tile(key)) {
-                    best_tile = this._tile_set.get_tile(key);
+                const key = this.tile_set.tile_key(row, col, item_id);
+                if (this.tile_set.has_tile(key)) {
+                    best_tile = this.tile_set.get_tile(key);
                     best_item_id = item_id;
                     min_dist2 = dist2;
                     best_x = xx; best_y = yy;
@@ -962,9 +916,9 @@ export class TileHandler {
                 let dist2 = sqr(item.x as number - x) + sqr(item.y as number - y);
                 if (dist2 >= min_dist2) continue;
 
-                const key = this._tile_set.tile_key(row, col, item.item_id);
-                if (this._tile_set.has_tile(key)) {
-                    best_tile = this._tile_set.get_tile(key);
+                const key = this.tile_set.tile_key(row, col, item.item_id);
+                if (this.tile_set.has_tile(key)) {
+                    best_tile = this.tile_set.get_tile(key);
                     best_item_id = item.item_id;
                     min_dist2 = dist2;
                 }
@@ -973,7 +927,7 @@ export class TileHandler {
 
         // For debugging.
         this._replayer.log(`recompute_highlight: best id ${best_item_id} ` +
-                          'current = ' + this._tile_set.highlight_item_id);
+                          'current = ' + this.tile_set.highlight_item_id);
 //      this.canvas.querySelector('.cr_dbg_status').textContent =
 //          `x=${x} y=${y} best ID = ${best_item_id}`;
 //          // + ' waypoints = ' + JSON.stringify(this.waypoints);
@@ -999,7 +953,7 @@ export class TileHandler {
             }
         }
 
-        if (best_item_id != this._tile_set.highlight_item_id) {
+        if (best_item_id != this.tile_set.highlight_item_id) {
             if (best_item_id != null) {
                 this._highlight_change_time = this._replayer.rel_time;
                 this.set_highlight(best_item_id, HighlightType.VIA_CANVAS);
@@ -1022,9 +976,9 @@ export class TileHandler {
             const color = best_tile.style.split(':')[0];
             this._tooltip.style.borderColor = '#' + color;
 
-            let nearest_pt = this._nearest_pts.get(
-                this._tile_set.config_id, this._tile_set.zoom_level,
-                this._tile_set.x_offset, this._tile_set.y_offset,
+            let nearest_pt = this.nearest_pts.get(
+                this.tile_set.config_id, this.tile_set.zoom_level,
+                this.tile_set.x_offset, this.tile_set.y_offset,
                 x, y, best_item_id);
 
             if (nearest_pt == null) {
@@ -1032,7 +986,7 @@ export class TileHandler {
                 this._tooltip.textContent = best_tile.label;
 
                 this._ctxt.send('pt_req', {
-                    config: this._tile_set.current_canvas_config(),
+                    config: this.tile_set.current_canvas_config(),
                     mouse_x: ix,
                     mouse_y: iy,
                     item_id: best_item_id,
@@ -1045,14 +999,14 @@ export class TileHandler {
             this._tooltip.textContent =
                 best_tile.label + '\r\n' +
                 `(${nearest_pt.data_x}, ${nearest_pt.data_y})`;
-            this._axis_handler.update_crosshair(
+            this.axis_handler.update_crosshair(
                 nearest_pt.screen_x, nearest_pt.screen_y);
         }
     }
 
     hide_tooltip() {
         this._tooltip.style.visibility = 'hidden';
-        this._axis_handler.update_crosshair(null, null);
+        this.axis_handler.update_crosshair(null, null);
     }
 
     // Enable highlight layer with the given item.
@@ -1061,7 +1015,7 @@ export class TileHandler {
     // VIA_CANVAS or VIA_SEARCH.
     set_highlight(item_id: number, trigger_type: HighlightType) {
         this._replayer.log(`>>> Setting highlight to #${item_id} ...`);
-        this._tile_set.set_highlight(item_id, trigger_type);
+        this.tile_set.set_highlight(item_id, trigger_type);
 
         if (this._highlighted_label != null &&
             this._highlighted_label.item_id != item_id)
@@ -1092,7 +1046,7 @@ export class TileHandler {
 
     clear_highlight2() {
         this._replayer.log('>>> Clearing highlight ...');
-        this._tile_set.set_highlight(null, null);
+        this.tile_set.set_highlight(null, null);
         if (this._highlighted_label != null) {
             this._highlighted_label.update_highlight(false);
             this._highlighted_label = null;
@@ -1146,7 +1100,7 @@ export class TileHandler {
             }
 
             this._ctxt.send('update_selection', {
-                version: this._tile_set.new_sm_version(),
+                version: this.tile_set.new_sm_version(),
                 how: 'exact',
                 pat: this._searchbox.value,
                 regex: this._btn_regex.checked
@@ -1158,10 +1112,10 @@ export class TileHandler {
 
     // If (ev == null) then we're being called manually by Ctxt: then we don't
     // need to update version because this should be the first call.
-    search_handler(ev: Event) {
+    search_handler(ev: Event | null) {
         if (ev != null && this._btn_autoselect.checked) {
             this._ctxt.send('search', {
-                version: this._tile_set.new_sm_version(),
+                version: this.tile_set.new_sm_version(),
                 pat: this._searchbox.value,
                 regex: this._btn_regex.checked,
             });
@@ -1177,11 +1131,11 @@ export class TileHandler {
 
     // `command` is one of: select_all, deselect_all, select_matching,
     //                      deselect_matching.
-    select_btn_handler(ev, command) {
+    select_btn_handler(ev: Event, command: string) {
         this._btn_autoselect.checked = false;
         this._btn_popup.hide();
 
-        let msg = {version: this._tile_set.new_sm_version()};
+        let msg: AnyJson = {version: this.tile_set.new_sm_version()};
         if (command == 'select_all' || command == 'deselect_all') {
             msg.pat = '';
             msg.regex = false;
@@ -1207,13 +1161,13 @@ export class TileHandler {
     //
     // TODO: Refactor into a separate class?  TileHandler is getting longer and
     // longer ...
-    update_search_result(msg_dict) {
+    update_search_result(msg_dict: AnyJson) {
         let old_labels = this._labels;
         this._labels = [];
         let new_labels = msg_dict.labels;
         new_labels.push([ITEM_ID_SENTINEL, false, '', '']);
 
-        if (this._tile_set.highlight_trigger == HighlightType.VIA_SEARCH &&
+        if (this.tile_set.highlight_trigger == HighlightType.VIA_SEARCH &&
             this._highlighted_label != null) {
 
             this._highlighted_label.update_highlight(false);
@@ -1251,7 +1205,7 @@ export class TileHandler {
                 checkbox.addEventListener('change', (ev) => {
                     this._btn_autoselect.checked = false;
                     this._ctxt.send('update_selection', {
-                        version: this._tile_set.new_sm_version(),
+                        version: this.tile_set.new_sm_version(),
                         how: (checkbox.checked) ? 'select' : 'deselect',
                         ids: [new_id]
                     });
@@ -1298,7 +1252,7 @@ export class TileHandler {
     //
     // Update highlight if any tile is available; otherwise turn it off.
     // Also send requests for highlight tiles if necessary.
-    label_mouse_handler(label, ev) {
+    label_mouse_handler(label: Label, ev: Event) {
         this._replayer.log(
             `label_mouse_handler called: item_id=${label.item_id} ` +
             `event=${ev.type} current highlighted=${label.highlighted} ` +
@@ -1310,7 +1264,8 @@ export class TileHandler {
 
             // Send request for missing tiles, if any.
             // TODO: This duplicates the logic of draw_prediction_line().
-            const req = this.create_highlight_req([{item_id: label.item_id}]);
+            const req = this.create_highlight_req(
+                [new Waypoint(null, null, label.item_id)]);
             if (req != null) {
                 this._replayer.log('Sending highlight_req:', req);
 
@@ -1346,7 +1301,7 @@ export class TileHandler {
     create_tile_req() {
         this._tile_update_stalled = false;
 
-        let sm_version = this._tile_set.sm_version;
+        let sm_version = this.tile_set.sm_version;
         this._replayer.log(
             `create_tile_req (version ${sm_version}): currently has ` +
             `${this._inflight_reqs.size} in-flight requests.`);
@@ -1358,11 +1313,11 @@ export class TileHandler {
             return null;
         }
 
-        const all_coords = this._tile_set.get_all_tile_coords();
+        const all_coords = this.tile_set.get_all_tile_coords();
         let buf = [];
         for (let [row, col] of all_coords) {
-            const key = this._tile_set.tile_key(row, col);
-            const tile = this._tile_set.get_tile(key);
+            const key = this.tile_set.tile_key(row, col);
+            const tile = this.tile_set.get_tile(key);
             if (tile == null || tile.sm_version < sm_version) {
                 const seq = this._next_seq++;
                 this._inflight_reqs.set(seq, Date.now());
@@ -1376,7 +1331,7 @@ export class TileHandler {
         this._ack_seqs = [];
         return {
             ack_seqs: ack_seqs,
-            config: this._tile_set.current_canvas_config(),
+            config: this.tile_set.current_canvas_config(),
             items: [{version: sm_version, prio: buf, reg: []}],
             throttled: false,
         };
@@ -1399,36 +1354,73 @@ export class TileHandler {
     private _replayer: EventReplayer;
 
     private _ctxt: Ctxt;
-    private _tile_set: TileSet;
+    tile_set: TileSet;
     private _canvas: HTMLElement;
-    private _axis_handler: AxisHandler;
+    axis_handler: AxisHandler;
     private _fg: HTMLElement;
     private _mouse_handler: CanvasMouseHandler;
     private _tooltip: HTMLElement;
-    private _nearest_pts: NearestPts;
+    nearest_pts: NearestPts;
 
     private _searchbox: HTMLInputElement;
     private _search_result_area: HTMLElement;
-    private _labels: Label[];
-    private _label_map: Map;
-    private _highlighted_label: Label | null:
 
-    private _btn_regex: HTMLElement;
+    // Keeps track of labels in the search result area.
+    private _labels: Label[] = [new Label(ITEM_ID_SENTINEL, false, "", "", null)];
+    private _label_map: Map<number, Label> = new Map();
+    private _highlighted_label: Label | null = null;
+
+    private _btn_regex: HTMLInputElement;
     private _btn_autoselect: HTMLInputElement;
     private _btn_popup: PopupBox;
     private _btn_select_matching: HTMLElement;
     private _btn_deselect_matching: HTMLElement;
     private _search_stat_area: HTMLElement;
 
-    private _tile_update_stalled: boolean;
+    // Set to true if we couldn't send request to udpate tiles after
+    // selection change, because there were too many in-flight tiles.
+    private _tile_update_stalled: boolean = false;
 
-    private _next_seq: number;
-    private _inflight_reqs: Map;
-    private _ack_seqs: number[];
-    private _received_tiles: Tile[];
+    // Implements a rudimentary flow control, because apparently javascript
+    // is still much slower than BE --- so if we just send as many requests
+    // as possible then we can get overwhelmed by responses!
+    //
+    // So, we keep the list of requests until we get corresponding requests,
+    // and stop sending more requests if it goes over limit.
+    //
+    // Each tile request contains a unique increasing (sequence #).  Each
+    // tile response from BE indicates the sequence numbers that are no
+    // longer "in-flight": normally it will be the sequence number of the
+    // original request for the tile, but in case BE receives duplicate
+    // requests, it can just attach these "orphaned" seqnce numbers to the
+    // next outgoing response, because in the end what's important is the
+    // count of requests in flight.
+    //
+    // In-flight requests that are super-old are silently discarded, just in
+    // case we have network issues or something similar.  (Not sure if we
+    // need this...)
+    //
+    // Key is (sequence #), value is timestamp.
+    //
+    // TODO: Also implement deduplication on FE?  It doesn't make much sense
+    //       to send duplicate tile requests so that BE can ignore it ...
+    private _next_seq: number = 0;
+    private _inflight_reqs: Map<number, number> = new Map();
+
+    // Sequence numbers of responses to acknowledge: piggybacks on the next
+    // request.
+    private _ack_seqs: number[] = [];
+
+    // Tiles that are received but not processed yet.
+    //
+    // Apparently, processing each tile one by one can hog the CPU, until
+    // tiles are queued up for multiple seconds(!!) before processing.  This
+    // is clearly unacceptable.  So, we enqueue received tiles here so that
+    // multiple tiles can be processed at once.
+    private _received_tiles: Tile[] = [];
 
     private _update_T: number | null = null;
-    private _hide_cb: number | null;
+    private _hide_cb: number | null = null;
     private _highlight_change_time: number | null = null;
     private _mouse_hist: MouseHistItem[] = [];
     private _waypoints: Waypoint[] = [];
