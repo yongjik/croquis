@@ -1,7 +1,8 @@
 // Keeps track of the tiles currently being shown in the canvas.
 
 import { Ctxt } from './ctxt';
-import { tile_key } from './tile';
+import { Tile, tile_key } from './tile';
+import { AnyJson, UNKNOWN, Unknown } from './types';
 import {
     assert,
     HighlightType,
@@ -96,7 +97,7 @@ export class TileSet {
     }
 
     // Send zoom request.
-    send_zoom_req(zoom) {
+    send_zoom_req(zoom: { px0: number, py0: number, px1: number, py1: number}) {
         if (!this.has_valid_config()) {
             console.log("Cannot resize: doesn't have a valid config yet!");
             return;
@@ -148,7 +149,7 @@ export class TileSet {
 
     // Handle the `canvas_config` message returned by BE.
     // Return true if we change the canvas config.
-    add_config(msg) {
+    add_config(msg: AnyJson) {
         const config = msg.config;
         if (this.config_id >= msg.config_id) {
             console.log(`canvas_config message contains stale config ID ` +
@@ -176,11 +177,11 @@ export class TileSet {
     }
 
     // Return true if we have this tile.
-    has_tile(key) {
+    has_tile(key: string) {
         return this.visible_tiles.has(key) || this.tile_cache.has(key);
     }
 
-    get_tile(key) {
+    get_tile(key: string) {
         return this.visible_tiles.get(key) || this.tile_cache.get(key) || null;
     }
 
@@ -202,7 +203,7 @@ export class TileSet {
     }
 
     // Add a new tile to TileSet.
-    add_tile(tile) {
+    add_tile(tile: Tile) {
         // If the tile is not visible, simply add to the tile cache.
         if (!this.is_visible(tile)) {
             this.tile_cache.insert(tile.key, tile);
@@ -224,7 +225,7 @@ export class TileSet {
 
     // Enable highlight layer with the given item.  If `item_id == null`,
     // turn off the highlight layer.
-    set_highlight(item_id, trigger_type) {
+    set_highlight(item_id: number | null, trigger_type: HighlightType | null) {
         this.highlight_item_id = item_id;
         this.highlight_trigger = trigger_type;
 
@@ -261,7 +262,7 @@ export class TileSet {
 
     // Update panning: update the position of all shown tiles, and optionally
     // show cached tiles as necessary.
-    pan(new_x_offset, new_y_offset) {
+    pan(new_x_offset: number, new_y_offset: number) {
         this.x_offset = new_x_offset;
         this.y_offset = new_y_offset;
         for (let tile of this.visible_tiles.values()) {
@@ -286,7 +287,7 @@ export class TileSet {
     // inside this.visible_tiles when called.
     //
     // TODO: This doesn't seem to be much of an optimization ... remove?
-    show_tile(tile, existing = null) {
+    show_tile(tile: Tile, existing: Tile | null = null) {
         this.update_tile_position(tile);
         let target = tile.is_hover() ? this.fg : this.inner_div;
 
@@ -304,23 +305,23 @@ export class TileSet {
         this.visible_tiles.set(tile.key, tile);
     }
 
-    update_tile_position(tile) {
+    update_tile_position(tile: Tile) {
         tile.elem.style.top = (tile.row * TILE_SIZE + this.y_offset) + 'px';
         tile.elem.style.left = (tile.col * TILE_SIZE + this.x_offset) + 'px';
     }
 
     // Hide a tile that is currently in the visible layer, and add it back
     // to the tile cache.
-    hide_tile(tile) {
+    hide_tile(tile: Tile) {
         this.visible_tiles.delete(tile.key);
         tile.elem.remove();  // Remove from display.
         this.tile_cache.insert(tile.key, tile);
     }
 
     // Given screen coordinate (x, y), return the corresponding hovermap
-    // data, or `null` if the pixel is not on any item, or the literal
-    // string 'unknown' if the data is not available.
-    get_highlight_id(x, y) {
+    // data, or `null` if the pixel is not on any item, or special value UNKNOWN
+    // if the data is not available.
+    get_highlight_id(x: number, y: number): number | null | Unknown {
         x = Math.round(x - this.x_offset);
         y = Math.round(y - this.y_offset);
 
@@ -331,10 +332,11 @@ export class TileSet {
         const offset = (offset_y * TILE_SIZE) + offset_x;
 
         const key = this.tile_key(row, col);
-        if (!this.visible_tiles.has(key)) return 'unknown';
-        const hovermap = this.visible_tiles.get(key).hovermap;
+        if (!this.visible_tiles.has(key)) return UNKNOWN;
+        const hovermap = this.visible_tiles.get(key)!.hovermap;
 
-        let item_id = hovermap.getInt32(offset * 4, true /* little endian */);
+        assert(hovermap != null);
+        let item_id = hovermap!.getInt32(offset * 4, true /* little endian */);
         return (item_id == -1) ? null : item_id;
     }
 
@@ -343,7 +345,7 @@ export class TileSet {
     // TODO: Need to handle temporarily visible tiles (e.g., when we zoom
     //       in, we need to show exiting tiles in higher zoom before we get
     //       the correct tiles from BE.)
-    is_visible(tile) {
+    is_visible(tile: Tile): boolean {
         if (tile.is_hover() && tile.item_id != this.highlight_item_id)
             return false;
 
@@ -360,7 +362,7 @@ export class TileSet {
 
     // Given screen coordinate (x, y), return the corresponding tile
     // coordinate.
-    get_tile_coord(x, y) {
+    get_tile_coord(x: number, y: number): [number, number] {
         x = Math.round(x - this.x_offset);
         y = Math.round(y - this.y_offset);
 
@@ -393,7 +395,7 @@ export class TileSet {
     }
 
     // Utility function.
-    tile_key(row: number, col: number, item_id?: number) {
+    tile_key(row: number, col: number, item_id: number | null = null): string {
         return tile_key(this.config_id, this.zoom_level, row, col, item_id);
     }
 

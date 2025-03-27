@@ -8,8 +8,9 @@ import { TILE_SIZE } from './util';
 // available yet.
 export function tile_key(
     config_id: number, zoom_level: number,
-    row: number, col: number, item_id?: number,
-) {
+    row: number, col: number,
+    item_id: number | null = null,
+): string {
     if (item_id == null)
         return `${config_id}:${zoom_level}:${row}:${col}`;
     else

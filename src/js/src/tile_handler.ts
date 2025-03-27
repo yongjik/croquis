@@ -8,7 +8,7 @@ import { EventReplayer, ReplayStatus } from './event_replayer';
 import { Label } from './label';
 import { Tile } from './tile';
 import { TileSet } from './tile_set';
-import { AnyJson } from './types';
+import { AnyJson, UNKNOWN } from './types';
 import {
     hide,
     HighlightType,
@@ -69,7 +69,7 @@ class Waypoint {
     constructor(
         public x: number | null,
         public y: number | null,
-        public item_id: number,
+        public item_id: number | null,
     ) { }
 }
 
@@ -288,8 +288,8 @@ export class TileHandler {
         this.axis_handler = new AxisHandler(ctxt, this);
         this._fg = this._canvas.querySelector('.cr_foreground') as HTMLElement;
 
-        this._mouse_handler =
-            new CanvasMouseHandler(this, this._replayer, this._canvas);
+        this._mouse_handler = new CanvasMouseHandler(
+            ctxt.ctxt_id, this, this._replayer, this._canvas);
         this._tooltip = qs('.cr_tooltip') as HTMLElement;
         this.nearest_pts = new NearestPts();
 
@@ -547,10 +547,10 @@ export class TileHandler {
     handle_mouse_stop(x: number, y: number) {
         this._replayer.log(`handle_mouse_stop: ${x} ${y}`);
         let item_id = this.tile_set.get_highlight_id(x, y);
-        if (item_id == 'unknown') return;
+        if (item_id === UNKNOWN) return;
         this._replayer.log('current item_id = ', item_id);
 
-        let buf = [{x : x, y: y, item_id: item_id}];
+        let buf = [new Waypoint(x, y, item_id)];
         const req = this.create_highlight_req(buf);
         if (req == null) return;
 
@@ -670,7 +670,7 @@ export class TileHandler {
             x = Math.round(x); y = Math.round(y);
             const item_id = this.tile_set.get_highlight_id(x, y);
 
-            if (item_id == 'unknown')
+            if (item_id == UNKNOWN)
                 return false;  // We have missing data: bail out.
 
             const item = new Waypoint(x, y, item_id);
@@ -789,7 +789,7 @@ export class TileHandler {
 
             if (waypoint.x != null) {
                 const [row, col] =
-                    this.tile_set.get_tile_coord(waypoint.x, waypoint.y);
+                    this.tile_set.get_tile_coord(waypoint.x, waypoint.y!);
                 prio_coords.get(waypoint.item_id).add(`${row}:${col}`);
             }
             else {
@@ -895,7 +895,7 @@ export class TileHandler {
                 const dist2 = sqr(x - xx) + sqr(y - yy);
                 if (dist2 >= min_dist2) continue;
                 const item_id = this.tile_set.get_highlight_id(xx, yy);
-                if (item_id == null || item_id == 'unknown') continue;
+                if (item_id == null || item_id == UNKNOWN) continue;
 
                 const key = this.tile_set.tile_key(row, col, item_id);
                 if (this.tile_set.has_tile(key)) {
@@ -966,14 +966,19 @@ export class TileHandler {
 
         // Enable tooltip if the mouse is stopped.
         this.hide_tooltip();
-        if (this._mouse_handler.move == 'stopped' && best_item_id != null) {
+        if (this._mouse_handler.move == 'stopped' &&
+            // We don't need to check these two at the same time but that
+            // silences typescript warning ...
+            best_tile != null &&
+            best_item_id != null) {
+
             this._replayer.log(
                 `Activating tooltip for item #${best_item_id} ...`);
 
             this._tooltip.style.visibility = 'visible';
             this._tooltip.style.top = (y + TOOLTIP_OFFSET_Y) + 'px';
             this._tooltip.style.left = (x + TOOLTIP_OFFSET_X) + 'px';
-            const color = best_tile.style.split(':')[0];
+            const color = best_tile.style!.split(':')[0];
             this._tooltip.style.borderColor = '#' + color;
 
             let nearest_pt = this.nearest_pts.get(

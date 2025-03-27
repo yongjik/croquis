@@ -2,3 +2,6 @@
 export type AnyJson = Record<string, any>;
 export type BufList = (ArrayBuffer | ArrayBufferView)[];
 export type Callback = (msg: Record<string, any>, attachments: BufList) => void;
+
+export const UNKNOWN = Symbol("unknwon");
+export type Unknown = typeof UNKNOWN

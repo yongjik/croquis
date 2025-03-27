@@ -108,6 +108,8 @@ export class LRUCache<K, V> {
         return v;
     }
 
+    get d(): Map<K, V> { return this._d; }
+
     private _maxsize: number;
     private _should_replace: (oldv: V, newv: V) => boolean;
     private _d: Map<K, V>;

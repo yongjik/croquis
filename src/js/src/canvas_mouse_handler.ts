@@ -1,7 +1,8 @@
 // Encapsulates mouse interaction inside the canvas.
 
 import type { TileHandler} from './tile_handler';
-import { ReplayStatus } from './event_replayer';
+import { EventReplayer, ReplayStatus } from './event_replayer';
+import { AnyJson } from './types';
 import { assert, sqr } from './util';
 
 const MOUSE_STOP_THRESHOLD_MSEC = 30.0;
@@ -21,14 +22,17 @@ export enum ButtonStatus {
 
 export class CanvasMouseHandler {
     constructor(
-        parent: TileHandler, replayer: EventReplayer, canvas: HTMLElement,
+        ctxt_id: string,
+        parent: TileHandler,
+        replayer: EventReplayer,
+        canvas: HTMLElement,
     ) {
         this.parent = parent;
         this.replayer = replayer;
         this.canvas = canvas;
         this.zoom_radio_btn =
-            document.querySelector(`#${parent.ctxt.canvas_id}-zoom`);
-        this.select_area = this.canvas.querySelector('.cr_select_area');
+            document.querySelector(`#${ctxt_id}-zoom`)! as HTMLElement;
+        this.select_area = this.canvas.querySelector('.cr_select_area')!;
 
         this.mouse_stopped_cb = null;
         // XXX remove!
@@ -37,7 +41,8 @@ export class CanvasMouseHandler {
 
         for (let evname of ['mousedown', 'mouseleave',
                             'mousemove', 'mouseup']) {
-            this.canvas.addEventListener(evname, (ev) => {
+            this.canvas.addEventListener(evname, (_ev: Event) => {
+                let ev = _ev as MouseEvent;
                 if (this.replayer.status == ReplayStatus.RUNNING) return;
 
                 let rect = this.canvas.getBoundingClientRect();
@@ -69,7 +74,7 @@ export class CanvasMouseHandler {
         // this.clear_mouse_stop_cb();
     }
 
-    replay_mouse_event(args) {
+    replay_mouse_event(args: AnyJson) {
         this.mouse_x = args.x;
         this.mouse_y = args.y;
         this.mouse_btns = args.btns;
@@ -77,14 +82,14 @@ export class CanvasMouseHandler {
     }
 
     // `evname`: event name (or 'stopped' if we're called by `mouse_stopped_cb`.
-    mouse_handler_cb(evname) {
+    mouse_handler_cb(evname: string) {
         const [x, y, btns] = [this.mouse_x, this.mouse_y, this.mouse_btns];
         this.replayer.record_event(
             'mouse', {name: evname, x: x, y: y, btns: btns});
         this.replayer.log(`mouse_handler_cb: status=${this}`);
 
         if (evname == 'mouseleave') {
-            this.move = 'outside';
+            this.move = MouseStatus.OUTSIDE;
 
             // Mouse is leaving: reset everything.
             this.clear_mouse_stop_cb();
@@ -98,7 +103,7 @@ export class CanvasMouseHandler {
         if (evname == 'stopped') {
             this.move = MouseStatus.STOPPED;
             if (this.btn == 'up') {
-                this.parent.handle_mouse_stop(x, y);
+                this.parent.handle_mouse_stop(x!, y!);
                 this.parent.recompute_highlight();
             }
 
@@ -110,13 +115,13 @@ export class CanvasMouseHandler {
         // Now `evname` is one of mousedown/mousemove/moseup: for that to
         // happen, the cursor must be inside.
         const prev_move = this.move;
-        if (this.move == 'outside') this.move = 'moving';
+        if (this.move == MouseStatus.OUTSIDE) this.move = MouseStatus.MOVING;
 
         // Since mousedown/mouseup events can trigger for other buttons we don't
         // care about, let's just compare the previous and current state of the
         // primary (= "left") button and use that to decide next action.
         const btn_was_pressed = (this.btn != 'up');
-        const btn_is_pressed = ((btns & 1) == 1);
+        const btn_is_pressed = ((btns! & 1) == 1);
 
         let tile_set = this.parent.tile_set;
 
