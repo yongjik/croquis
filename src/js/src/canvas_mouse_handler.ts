@@ -15,9 +15,10 @@ export enum MouseStatus {
 };
 
 export enum ButtonStatus {
-    UP   = "up",    // left button not pressed
-    ZOOM = "zoom",  // left burron pressed for "select to zoom"
-    PAN  = "pan",   // left burron pressed for panning
+    UP   = "up",   // left button not pressed
+    SELECT_TO_ZOOM = "select_to_zoom",
+                   // left button pressed for "select to zoom"
+    PAN  = "pan",  // left button pressed for panning
 };
 
 export class CanvasMouseHandler {
@@ -31,7 +32,7 @@ export class CanvasMouseHandler {
         this.replayer = replayer;
         this.canvas = canvas;
         this.zoom_radio_btn =
-            document.querySelector(`#${ctxt_id}-zoom`)! as HTMLElement;
+            document.querySelector(`#${ctxt_id}-zoom`)! as HTMLInputElement;
         this.select_area = this.canvas.querySelector('.cr_select_area')!;
 
         this.mouse_stopped_cb = null;
@@ -133,10 +134,13 @@ export class CanvasMouseHandler {
             this.start_y = y;
 
             if (this.zoom_radio_btn.checked) {
-                this.btn = 'select';
+                // XXX This seems a bug in the original code?  We were using
+                // both "zoom" and "select" to mean the same thing ???
+                // this.btn = 'select';
+                this.btn = ButtonStatus.SELECT_TO_ZOOM;
             }
             else {
-                this.btn = 'pan';
+                this.btn = ButtonStatus.PAN;
                 this.x_offset0 = tile_set.x_offset;
                 this.y_offset0 = tile_set.y_offset;
             }
@@ -150,17 +154,17 @@ export class CanvasMouseHandler {
         // the canvas, and then released the button outside, and then came
         // back.  In that case, we just reset the state and do nothing.
         if (btn_was_pressed && !btn_is_pressed) {
-            if (this.btn == 'select' && prev_move != 'outside') {
-                let diag_len = Math.sqrt(sqr(this.start_x - x) +
-                                         sqr(this.start_y - y));
+            if (this.btn == ButtonStatus.SELECT_TO_ZOOM && prev_move != 'outside') {
+                let diag_len = Math.sqrt(sqr(this.start_x! - x) +
+                                         sqr(this.start_y! - y));
                 if (diag_len < MIN_SELECT_AREA_DIAG) {
                     this.replayer.log(
                         'Selected area too small, ignoring ...');
                 }
                 else {
                     const zoom = {
-                        px0: this.start_x - tile_set.x_offset,
-                        py0: this.start_y - tile_set.y_offset,
+                        px0: this.start_x! - tile_set.x_offset,
+                        py0: this.start_y! - tile_set.y_offset,
                         px1: x - tile_set.x_offset,
                         py1: y - tile_set.y_offset,
                     };
@@ -170,32 +174,32 @@ export class CanvasMouseHandler {
             }
             else if (this.btn == 'pan' && prev_move != 'outside') {
                 this.parent.handle_panning(
-                    this.x_offset0 + x - this.start_x,
-                    this.y_offset0 + y - this.start_y);
+                    this.x_offset0! + x - this.start_x!,
+                    this.y_offset0! + y - this.start_y!);
             }
 
             this.clear_select_area();
-            this.btn = 'up';
+            this.btn = ButtonStatus.UP;
 
             return;
         }
 
         // Any other case is considered a mouse movement.
-        if (this.btn == 'up') {
+        if (this.btn == ButtonStatus.UP) {
             // Update mouse history.
             this.parent.update_mouse_history(x, y);
             this.parent.recompute_highlight();
             this.enqueue_mouse_stop_cb();
         }
-        else if (this.btn == 'select') {
+        else if (this.btn == ButtonStatus.SELECT_TO_ZOOM) {
             this.show_select_area(x, y);
         }
-        else if (this.btn == 'pan') {
-            this.parent.handle_panning(this.x_offset0 + x - this.start_x,
-                                       this.y_offset0 + y - this.start_y);
+        else if (this.btn == ButtonStatus.PAN) {
+            this.parent.handle_panning(this.x_offset0! + x - this.start_x!,
+                                       this.y_offset0! + y - this.start_y!);
         }
         else {
-            assert(null);
+            assert(false);
         }
     }
 
@@ -217,8 +221,8 @@ export class CanvasMouseHandler {
     }
 
     // Called when mouse moves while (this.btn == 'zoom').
-    show_select_area(x1, y1) {
-        const [x0, y0] = [this.start_x, this.start_y];
+    show_select_area(x1: number, y1: number) {
+        const [x0, y0] = [this.start_x!, this.start_y!];
 
         this.select_area.style.visibility = 'visible';
         this.select_area.style.top = Math.min(y0, y1) + 'px';
@@ -239,15 +243,18 @@ export class CanvasMouseHandler {
     private replayer: EventReplayer;
     private canvas: HTMLElement;
 
-    private zoom_radio_btn: HTMLElement;
+    private zoom_radio_btn: HTMLInputElement;
     private select_area: HTMLElement;
     private mouse_stopped_cb: any = null;  // XXX
 
     move: MouseStatus = MouseStatus.MOVING;
     private btn: ButtonStatus = ButtonStatus.UP;
-    mouse_x: number | null = null;
-    mouse_y: number | null = null;
-    mouse_btns: number | null = 0;
+    // (0.0, 0.0) is obviously not the correct initial state but this will be
+    // filled once we get any mouse event, so this should silence typescript
+    // warnings.
+    mouse_x: number = 0.0;
+    mouse_y: number = 0.0;
+    mouse_btns: number = 0;
 
     // Mouse position when we started either "select and zoom" or panning.
     // (When this.btn == UP, this value has no meaning.)

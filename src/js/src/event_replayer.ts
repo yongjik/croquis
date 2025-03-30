@@ -9,11 +9,6 @@ export enum ReplayStatus {
     RUNNING = "running",
 }
 
-// XXX remove
-// export const REPLAY_DISABLED = 0;
-// export const REPLAY_RECORDING = 1;
-// export const REPLAY_RUNNING = 2;
-
 const REPLAY_SPEED = 0.2;
 
 // Currently it only supports replaying for highlight tiles.  Not sure if we'll
