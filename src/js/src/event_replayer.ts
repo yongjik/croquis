@@ -9,6 +9,22 @@ export enum ReplayStatus {
     RUNNING = "running",
 }
 
+export type EventCallback = (args: AnyJson) => void;
+
+export type EventCallbackMap = {
+    reset: EventCallback;
+    mouse: EventCallback;
+    clear2: EventCallback;
+    clear3: EventCallback;
+    tile: (args: AnyJson) => Promise<void>;
+};
+
+type EventEntry = {
+    rel_time: number;
+    event_type: keyof EventCallbackMap;
+    args: AnyJson | null;
+};
+
 const REPLAY_SPEED = 0.2;
 
 // Currently it only supports replaying for highlight tiles.  Not sure if we'll
@@ -17,7 +33,10 @@ export class EventReplayer {
     // For each `event_type` in the record, fn_map[event_type] is a function
     // that takes a single dict as argument, and optionally returns a Promise
     // object that completes the callback.
-    constructor(btns_div: HTMLElement | null, fn_map) {
+    constructor(
+        private btns_div: HTMLElement | null,
+        private fn_map: EventCallbackMap
+    ) {
         this.btns_div = btns_div;
         if (btns_div == null) {
             this.enabled = false;  // We're disabled.
@@ -26,7 +45,6 @@ export class EventReplayer {
 
         this.enabled = true;
         this.status_area = btns_div.querySelector('span');
-        this.fn_map = fn_map;
 
         this.reset(ReplayStatus.DISABLED);
 
@@ -44,21 +62,21 @@ export class EventReplayer {
     clear() {
         if (!this.enabled) return;
         this.reset(ReplayStatus.DISABLED);
-        this.run_cb('reset', {}).then();
-        this.status_area.textContent = '(Empty)';
+        this.fn_map.reset({});
+        this.status_area!.textContent = '(Empty)';
     }
 
     start_recording() {
         if (!this.enabled) return;
         this.reset(ReplayStatus.RECORDING);
-        this.run_cb('reset', {}).then();
-        this.status_area.textContent = 'Recording ...';
+        this.fn_map.reset({});
+        this.status_area!.textContent = 'Recording ...';
     }
 
     stop_recording() {
         if (!this.enabled) return;
         this.status = ReplayStatus.DISABLED;
-        this.status_area.textContent = `Stopped: has ${this.events.length} events.`;
+        this.status_area!.textContent = `Stopped: has ${this.events.length} events.`;
     }
 
     save() {
@@ -87,14 +105,14 @@ export class EventReplayer {
         input.type = 'file';
         input.style.display = 'none';
 
-        let onload = (ev) => {
-            let contents = ev.target.result;
+        let onload = (ev: ProgressEvent) => {
+            let contents = (ev.target as FileReader).result as string;
             document.body.removeChild(input);
-            this.load_handler(contents);
+            this.load_handler(contents!);
         };
 
-        input.onchange = (ev) => {
-            let file = ev.target.files[0];
+        input.onchange = (ev: Event) => {
+            let file = input.files![0];
             if (file == null) return;
             let reader = new FileReader();
             reader.onload = onload;
@@ -105,7 +123,7 @@ export class EventReplayer {
         input.click();
     }
 
-    load_handler(contents) {
+    load_handler(contents: string) {
         if (!this.enabled) return;
 
         this.events = [];
@@ -115,7 +133,7 @@ export class EventReplayer {
             if (m) this.events.push(JSON.parse(m[1]));
         }
 
-        this.status_area.textContent = `Loaded ${this.events.length} events.`;
+        this.status_area!.textContent = `Loaded ${this.events.length} events.`;
     }
 
     // Record an event: we later call this.fn_map[event_type](args).
@@ -124,7 +142,7 @@ export class EventReplayer {
     //      'mouse': mouse cursor moves
     //      'leave': mouse leaves the area
     //      'tile': highlight tile received from BE
-    record_event(event_type: string, args: AnyJson) {
+    record_event(event_type: keyof EventCallbackMap, args: AnyJson) {
         if (!this.enabled) return;
 
         if (this.status != ReplayStatus.RUNNING)
@@ -133,12 +151,16 @@ export class EventReplayer {
         if (this.status != ReplayStatus.RECORDING) return;
 
         const event_idx = this.events.length;
-        const event_entry = [this.rel_time, event_type, args];
+        const event_entry = {
+            rel_time: this.rel_time!,
+            event_type: event_type,
+            args: args,
+        };
         this.events.push(event_entry);
         this.event_log.push(`${get_timestamp_str()} #${event_idx}: ` +
                             JSON.stringify(event_entry));
 
-        this.status_area.textContent =
+        this.status_area!.textContent =
             `Recorded ${event_idx + 1} events ...`;
     }
 
@@ -147,12 +169,12 @@ export class EventReplayer {
 
         if (this.events.length > 0) {
             this.reset(ReplayStatus.RUNNING);
-            this.run_cb('reset', {}).then();
+            this.fn_map.reset({});
             this.replay_event(0);
         }
     }
 
-    replay_event(idx) {
+    replay_event(idx: number) {
         if (!this.enabled) return;
 
         if (this.status != ReplayStatus.RUNNING) return;  // Reply disabled.
@@ -160,16 +182,20 @@ export class EventReplayer {
         const event_entry = this.events[idx];
         this.event_log.push(`${get_timestamp_str()} #${idx}: ` +
                             JSON.stringify(event_entry));
-        let event_type, args;
-        [this.rel_time, event_type, args] = this.events[idx];
+        this.rel_time = event_entry.rel_time;
+        const event_type = event_entry.event_type;
+        const args = event_entry.args;
         const event_str =
             `event #${idx} of ${this.events.length} : ` +
             `at ${this.rel_time}: ${event_type}(${JSON.stringify(args)})`;
-        this.status_area.textContent = `Replaying ${event_str} ...`;
-        this.run_cb(event_type, args).then(() => {
+        this.status_area!.textContent = `Replaying ${event_str} ...`;
+
+        (
+            this.fn_map[event_type](args || {}) || Promise.resolve(true)
+        ).then(() => {
             idx += 1;
             if (idx >= this.events.length) {
-                this.status_area.textContent =
+                this.status_area!.textContent =
                     `Replay finished for ${this.events.length} events.`;
                 return;
             }
@@ -177,21 +203,23 @@ export class EventReplayer {
             // Instead of starting at a fixed time, let's compute wait time
             // based on the current time - in this way we can set breakpoints in
             // dev tools and continue debugfging.
-            let next_rel_T = this.events[idx][0];
-            window.setTimeout(() => { this.replay_event(idx) },
-                       (next_rel_T - this.rel_time) / REPLAY_SPEED);
+            let next_rel_T = this.events[idx].rel_time;
+            window.setTimeout(
+                () => { this.replay_event(idx) },
+                (next_rel_T - this.rel_time!) / REPLAY_SPEED
+            );
 
-            this.status_area.textContent = `Executed ${event_str}.`;
+            this.status_area!.textContent = `Executed ${event_str}.`;
         })
-        .catch(error => {
-            this.status_area.textContent =
+        .catch((error: any) => {
+            this.status_area!.textContent =
                 `Error executing ${event_str}: ${error}`;
             this.status = ReplayStatus.DISABLED;
         });
     }
 
     // Internal utility function.
-    reset(status) {
+    reset(status: ReplayStatus) {
         if (!this.enabled) return;
 
         // `rel_time` keeps the "elapsed time" since the start of
@@ -206,15 +234,8 @@ export class EventReplayer {
         this.status = status;
     }
 
-    run_cb(event_type, args) {
-        if (!this.enabled) return;
-
-        let retval = this.fn_map[event_type](args);
-        return retval || Promise.resolve(true /* unused */);
-    }
-
     // Add debug logging.
-    log(...args) {
+    log(...args: any[]) {
         if (!this.enabled) return;
 
         if (this.status == ReplayStatus.DISABLED) return;
@@ -228,10 +249,12 @@ export class EventReplayer {
     }
 
     private enabled: boolean = false;
-    private btns_div: HTMLElement | null;
     status: ReplayStatus = ReplayStatus.DISABLED;
 
-    private status_area: SpanElement;
-    private fn_map: any;  // XXX
+    private status_area: HTMLSpanElement | null = null;
     rel_time: number | null = null;
+
+    private events: EventEntry[] = [];
+    private event_log: string[] = [];
+    private start_T: number = Date.now();
 }
