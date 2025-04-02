@@ -14,8 +14,12 @@ export enum HighlightType {
 // TODO: Any way to generate a better assert message?
 export function assert(x: boolean, msg: string | null = null) {
     if (!x) {
-        throw (msg) ? msg : 'Should not happen!';
+        throw (msg) ? msg : "Should not happen!";
     }
+}
+
+export function assertFalse(msg: string | null = null): never {
+    throw (msg) ? msg : "Should not happen!";
 }
 
 export function sqr(x: number): number { return x * x; }

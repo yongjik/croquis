@@ -414,8 +414,8 @@ export class TileSet {
     // Canvas config values: initialized *after* the constructor.
 
     config_id: number = -1;
-    private width: number = -1;
-    private height: number = -1;
+    width: number = -1;
+    height: number = -1;
     private x0: number = NaN;
     private y0: number = NaN;
     private x1: number = NaN;

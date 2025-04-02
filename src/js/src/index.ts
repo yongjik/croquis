@@ -13,7 +13,7 @@ import { JSONObject, ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import { Widget } from '@lumino/widgets';
 import { ICommMsgMsg } from '@jupyterlab/services/lib/kernel/messages';
 
-import { BaseCtxt, create_ctxt } from './ctxt';
+import { BaseCtxt, Ctxt } from './ctxt';
 import { BufList, Callback } from './types';
 
 // Mime type used for this extension.
@@ -170,7 +170,7 @@ export class MyJextWidget extends Widget implements IRenderMime.IRenderer {
 
     dispose() {
         console.log(`dispose called for: ${this._ctxt_id}`);
-        this._canvas?.dispose();
+        this._ctxt?.dispose();
         super.dispose();
     }
 
@@ -191,7 +191,7 @@ export class MyJextWidget extends Widget implements IRenderMime.IRenderer {
             return Promise.reject("no ctxt id!");
         }
 
-        this._ctxt = create_ctxt(
+        this._ctxt = new Ctxt(
             this.node, ctxt_id,
             (callback) => this._registry.get_comm(
                 kernel_id, BE_id, ctxt_id, callback)

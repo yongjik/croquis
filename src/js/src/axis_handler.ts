@@ -1,25 +1,36 @@
 // The axis handler.
 
-import { assert, INFLIGHT_REQ_EXPIRE_MSEC, sqr } from './util.js';
+import type { EventReplayer } from './event_replayer';
+import type { TileHandler} from './tile_handler';
+import { Ctxt } from './ctxt';
+import { TileSet } from './tile_set';
+import { AnyJson } from './types';
+import { assertFalse, INFLIGHT_REQ_EXPIRE_MSEC, sqr } from './util';
+
+enum WhichAxis {
+    X = "x",
+    Y = "y",
+}
 
 // Helper class used by AxisHandler.
 class AxisTick {
     // `coord`: in pixels.
-    constructor(handler, axis, coord, label_str) {
-        this.handler = handler;
-        this.axis = axis;
-        this.coord = coord;
-
-        if (axis == 'x') {
+    constructor(
+        private handler: AxisHandler,
+        public axis: WhichAxis,
+        public coord: number,
+        label_str: string,
+    ) {
+        if (axis == WhichAxis.X) {
             this.axis_cell = this.handler.x_axis;
             this.css_field = 'left';
         }
-        else if (axis == 'y') {
+        else if (axis == WhichAxis.Y) {
             this.axis_cell = this.handler.y_axis;
             this.css_field = 'top';
         }
         else
-            assert(null);
+            assertFalse();
 
         // Add the new tick, label, and grid line.
         this.tick = document.createElement('div');
@@ -48,11 +59,12 @@ class AxisTick {
 
     // Update location after panning.
     update_location() {
-        let tile_set = this.handler.tile_handler.tile_set;
+        let tile_set: TileSet = this.handler.tile_handler.tile_set;
 
         const [offset, limit] =
-            (this.axis == 'x') ? [tile_set.x_offset, tile_set.width]
-                               : [tile_set.y_offset, tile_set.height];
+            (this.axis == WhichAxis.X)
+                ? [tile_set.x_offset, tile_set.width]
+                : [tile_set.y_offset, tile_set.height];
         const screen_coord = Math.round(offset + this.coord);
 
         for (let obj of [this.tick, this.label, this.line]) {
@@ -64,42 +76,32 @@ class AxisTick {
                 obj.style.visibility = 'hidden';
         }
     }
+
+    private axis_cell: HTMLDivElement;
+    private css_field: "left" | "top";
+    private tick: HTMLDivElement;
+    private label: HTMLDivElement;
+    private line: HTMLDivElement;
 }
 
 const REQUEST_NEW_LABELS_DIST_THRESHOLD = 30;
 
 export class AxisHandler {
-    constructor(ctxt, tile_handler) {
-        this.ctxt = ctxt;
-        this.tile_handler = tile_handler;
-
-        this.x_axis = ctxt.canvas_main.querySelector('.cr_x_axis');
-        this.y_axis = ctxt.canvas_main.querySelector('.cr_y_axis');
-        this.grid = ctxt.canvas_main.querySelector('.cr_grid');
-
-        this.ticks = [];
-
-        this.next_seq = 0;  // Used for `axis_req` message.
-
-        // For flow control, we remember the number of "axis_req" messages we've
-        // sent, and don't send more than two messages until we get a response.
-        //
-        // The logic is similar to TilehHandler.inflight_reqs (but simpler): see
-        // there for more discussion.
-        //
-        // TODO: Refactor into a single helper class?
-        this.inflight_reqs = new Map();
-
-        this.last_seq = -1;
-
-        // x/y offsets used for our last "axis_req" message.
-        this.last_x_offset = this.last_y_offset = 0;
+    constructor(
+        private ctxt: Ctxt,
+        public tile_handler: TileHandler,
+        private _replayer: EventReplayer,
+        cr_main1_elem: HTMLElement,
+    ) {
+        this._x_axis = cr_main1_elem.querySelector('.cr_x_axis')! as HTMLDivElement;
+        this._y_axis = cr_main1_elem.querySelector('.cr_y_axis')! as HTMLDivElement;
+        this._grid = cr_main1_elem.querySelector('.cr_grid')! as HTMLDivElement;
     }
 
     // Remove all known ticks and re-create them, following new information sent
     // from the backend.
     // Message type is either 'canvas_config' or 'axis_ticks'.
-    update(msg_dict) {
+    update(msg_dict: AnyJson) {
         if (msg_dict.msg == 'canvas_config') {
             // Reset sequence #.
             this.last_seq = -1;
@@ -123,14 +125,14 @@ export class AxisHandler {
         for (let tick of this.ticks) tick.remove();
         this.ticks.length = 0;
 
-        for (let axis of ['x', 'y']) {
+        for (let axis of [WhichAxis.X, WhichAxis.Y]) {
             for (let [coord, label] of msg_dict.axes[axis])
                 this.ticks.push(new AxisTick(this, axis, coord, label));
         }
     }
 
     // Update ticks based on new location.
-    update_location(zoom_udpated) {
+    update_location(zoom_udpated: boolean) {
         for (let tick of this.ticks) tick.update_location();
 
         let tile_set = this.tile_handler.tile_set;
@@ -142,12 +144,12 @@ export class AxisHandler {
             if (dist2 < sqr(REQUEST_NEW_LABELS_DIST_THRESHOLD)) return;
         }
 
-        this.tile_handler.replayer.log('Creating new axis_req message ...');
+        this._replayer.log('Creating new axis_req message ...');
 
         if (this.inflight_reqs.size >= 2) {
             // TODO: If `zoom_updated` is true, we still need to send the
             //       request!
-            this.tile_handler.replayer.log(
+            this._replayer.log(
                 'Too many in-flight axis requests, bailing out ...');
             return;
         }
@@ -169,18 +171,17 @@ export class AxisHandler {
         let deadline = Date.now() - INFLIGHT_REQ_EXPIRE_MSEC;
         for (let [seq_no, timestamp] of this.inflight_reqs) {
             if (timestamp < deadline) {
-                this.tile_handler.replayer.log(
-                    `Forgetting old seq #${seq_no} ...`);
+                this._replayer.log(`Forgetting old seq #${seq_no} ...`);
                 this.inflight_reqs.delete(seq_no);
             }
         }
     }
 
     // Helper function for the crosshair ("nearest point").
-    update_crosshair(x, y) {
+    update_crosshair(x: number | null, y: number | null): void {
         if (x == null) {
             for (let hair of
-                 this.grid.querySelectorAll('.nearest_x, .nearest_y'))
+                 this._grid.querySelectorAll('.nearest_x, .nearest_y'))
                 hair.remove();
             return;
         }
@@ -188,11 +189,37 @@ export class AxisHandler {
         let x_hair = document.createElement('div');
         x_hair.classList.add('nearest_x');
         x_hair.style.left = x + 'px';
-        this.grid.appendChild(x_hair);
+        this._grid.appendChild(x_hair);
 
         let y_hair = document.createElement('div');
         y_hair.classList.add('nearest_y');
         y_hair.style.top = y + 'px';
-        this.grid.appendChild(y_hair);
+        this._grid.appendChild(y_hair);
     }
+
+    private _x_axis: HTMLDivElement;
+    private _y_axis: HTMLDivElement;
+    private _grid: HTMLDivElement;
+
+    get x_axis(): HTMLDivElement { return this._x_axis; }
+    get y_axis(): HTMLDivElement { return this._y_axis; }
+    get grid(): HTMLDivElement { return this._grid; }
+
+    private ticks: AxisTick[] = [];
+
+    private next_seq: number = 0;  // Used for `axis_req` message.
+    private last_seq: number = -1;
+
+    // For flow control, we remember the number of "axis_req" messages we've
+    // sent, and don't send more than two messages until we get a response.
+    //
+    // The logic is similar to TilehHandler.inflight_reqs (but simpler): see
+    // there for more discussion.
+    //
+    // TODO: Refactor into a single helper class?
+    private inflight_reqs: Map<number, number> = new Map();
+
+    // x/y offsets used for our last "axis_req" message.
+    private last_x_offset = 0;
+    private last_y_offset = 0;
 }

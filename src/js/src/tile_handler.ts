@@ -4,7 +4,7 @@ import { AxisHandler } from './axis_handler';
 import { CanvasMouseHandler, MouseStatus } from './canvas_mouse_handler';
 import { Ctxt } from './ctxt';
 import { apply_css_tree, apply_flex, disable_drag } from './css_helper';
-import { EventReplayer, ReplayStatus } from './event_replayer';
+import { EventCallbackMap, EventReplayer, ReplayStatus } from './event_replayer';
 import { Label } from './label';
 import { Tile } from './tile';
 import { TileSet } from './tile_set';
@@ -285,7 +285,8 @@ export class TileHandler {
         this.tile_set = new TileSet(ctxt);
         this._canvas =
             document.querySelector(`#${ctxt.ctxt_id} .cr_canvas`) as HTMLElement;
-        this.axis_handler = new AxisHandler(ctxt, this);
+        this.axis_handler = new AxisHandler(
+            ctxt, this, this._replayer, parent_elem);
         this._fg = this._canvas.querySelector('.cr_foreground') as HTMLElement;
 
         this._mouse_handler = new CanvasMouseHandler(
@@ -394,7 +395,7 @@ export class TileHandler {
     // TODO: Allow user to switch the grid on/off.
     register_canvas_config(msg_dict: AnyJson) {
         // TODO: Event replay is not written yet.
-        this._replayer.record_event('canvas', msg_dict);
+        // this._replayer.record_event('canvas', msg_dict);
 
         if (this.tile_set.add_config(msg_dict)) {
             // Cancel any selection/zoom going on, just in case.
@@ -442,14 +443,14 @@ export class TileHandler {
     // During replay, generate a tile request for keys[idx].  Set up
     // `_tile_replay_cb` to handle the received tile.
     tile_replay_handler(
-        resolve: (_: boolean) => void, keys: string[], idx: number
+        resolve: () => void, keys: string[], idx: number
     ) {
         if (idx == keys.length) {
             this.register_tile_internal(this._tile_replay_buf);
             this._tile_replay_cb = null;
             this._tile_replay_buf = [];
 
-            resolve(true /* unused */);  // We're done!
+            resolve();  // We're done!
             return;
         }
 
@@ -1068,7 +1069,11 @@ export class TileHandler {
 
     // To avoid flapping, we don't immediately clear highlighting if it was on
     // for less than the given threshold.
-    set_hide_cb(event_type: string, cb: () => void, threshold: number) {
+    set_hide_cb(
+        event_type: keyof EventCallbackMap,
+        cb: () => void,
+        threshold: number,
+    ) {
         const rel_T = this._replayer.rel_time as number;
         const elapsed = rel_T - this._update_T!;
         this._replayer.log(
