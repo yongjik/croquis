@@ -1195,7 +1195,7 @@ export class TileHandler {
 
             if (old_id < new_id) {
                 // This label is no longer needed: delete.
-                old_labels[old_idx].elem.remove();
+                old_labels[old_idx].elem!.remove();
                 this._label_map.delete(old_id);
                 if (this._highlighted_label === old_labels[old_idx])
                     this._highlighted_label = null;
@@ -1211,7 +1211,7 @@ export class TileHandler {
                     new_id, selected, label, style,
                     (label, ev) => this.label_mouse_handler(label, ev));
 
-                let checkbox = new_label.checkbox;
+                let checkbox = new_label.checkbox!;
                 checkbox.addEventListener('change', (ev) => {
                     this._btn_autoselect.checked = false;
                     this._ctxt.send('update_selection', {
@@ -1223,7 +1223,7 @@ export class TileHandler {
                 });
 
                 this._search_result_area.insertBefore(
-                    new_label.elem, old_labels[old_idx].elem);
+                    new_label.elem!, old_labels[old_idx].elem);
                 this._labels.push(new_label);
                 this._label_map.set(new_id, new_label);
                 new_idx++;
@@ -1266,7 +1266,7 @@ export class TileHandler {
         this._replayer.log(
             `label_mouse_handler called: item_id=${label.item_id} ` +
             `event=${ev.type} current highlighted=${label.highlighted} ` +
-            `classlist = ${label.elem.classList}`);
+            `classlist = ${label.elem!.classList}`);
 
         const is_leave = (ev.type == 'mouseleave');
         if (!is_leave && !label.highlighted) {
