@@ -142,7 +142,8 @@ class NearestPts {
 export class TileHandler {
     constructor(ctxt: Ctxt, parent_elem: HTMLElement) {
         // Shorthand.
-        let qs = (selector: string) => parent_elem.querySelector(selector);
+        let qs = (selector: string) =>
+            parent_elem.querySelector(selector) as HTMLElement;
 
         // Build the HTML.
         // TODO: Currently we build the entire innard of div.cr_main1 here.
@@ -291,7 +292,7 @@ export class TileHandler {
 
         this._mouse_handler = new CanvasMouseHandler(
             ctxt.ctxt_id, this, this._replayer, this._canvas);
-        this._tooltip = qs('.cr_tooltip') as HTMLElement;
+        this._tooltip = qs('.cr_tooltip');
         this.nearest_pts = new NearestPts();
 
         // TODO: Support replay?
@@ -299,7 +300,7 @@ export class TileHandler {
         this._searchbox.addEventListener(
             'input', (ev) => this.search_handler(ev));
 
-        this._search_result_area = qs('.cr_search_result') as HTMLElement;
+        this._search_result_area = qs('.cr_search_result');
 
         let ctrl_elem =
             document.querySelector(`#${ctxt.ctxt_id} .cr_ctrl_panel`) as HTMLElement;
@@ -331,7 +332,7 @@ export class TileHandler {
             this._btn_autoselect = qs('.cr_autoselect') as HTMLInputElement
         ).addEventListener('change', (ev) => this.autoselect_handler(ev));
 
-        this._btn_popup = new PopupBox(qs('.cr_btn_popup') as HTMLElement);
+        this._btn_popup = new PopupBox(qs('.cr_btn_popup'));
 
         qs('.cr_more')!.addEventListener('click', (ev) => {
             if (this._searchbox.value != '') {
@@ -356,18 +357,16 @@ export class TileHandler {
             'click', (ev) => this.select_btn_handler(ev, 'deselect_all'));
 
         (
-            this._btn_select_matching =
-                qs('.cr_select_matching') as HTMLElement
+            this._btn_select_matching = qs('.cr_select_matching')
         ).addEventListener(
             'click', (ev) => this.select_btn_handler(ev, 'select_matching'));
 
         (
-            this._btn_deselect_matching =
-                qs('.cr_deselect_matching') as HTMLElement
+            this._btn_deselect_matching = qs('.cr_deselect_matching')
         ).addEventListener(
             'click', (ev) => this.select_btn_handler(ev, 'deselect_matching'));
 
-        this._search_stat_area = qs('.cr_search_stat') as HTMLElement;
+        this._search_stat_area = qs('.cr_search_stat');
 
         this.reset_state();
     }
