@@ -1,6 +1,6 @@
 // The HTML template.
 
-function is_debug(ctxt_id: string) { ctxt_id.endsWith("-dbg"); }
+let is_debug = (ctxt_id: string) => ctxt_id.endsWith("-dbg");
 
 // Current setup:
 //  - div .croquis_nbext : outermost container
