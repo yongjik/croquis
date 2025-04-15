@@ -38,14 +38,17 @@ export class Tile {
         const png_data = attachments[0];
         this.elem = new Image(TILE_SIZE, TILE_SIZE);
         this.elem.classList.add('cr_tile');
-        this.elem.setAttribute('draggable', false);
+        this.elem.setAttribute('draggable', 'false');
         this.elem.src = URL.createObjectURL(
             new Blob([png_data], {type: 'image/png'}));
 
         // Hovermap data is available only if this is *not* a hover (i.e.,
         // highlight) image.
-        if (!is_hover)
-            this.hovermap = attachments[1];  // Type DataView.
+        if (!is_hover) {
+            this.hovermap = (attachments[1] instanceof ArrayBuffer)
+                ? new DataView(attachments[1])
+                : attachments[1] as DataView;
+        }
     }
 
     is_hover() {
@@ -64,6 +67,6 @@ export class Tile {
     style: string | null = null;
 
     key: string;
-    elem: Image;
+    elem: HTMLImageElement;
     hovermap: DataView | null = null;
 }
