@@ -5,6 +5,7 @@
     "main": "lib/index.js",
     "author": "Yongjik Kim",
     "license": "MIT",
+    "style": "style/croquis_fe.css",
     "scripts": {
         "build": "npm run build:lib && npm run build:labextension:dev",
         "build:prod": "npm run clean && npm run build:lib:prod && npm run build:labextension",
@@ -40,4 +41,3 @@
         "outputDir": "../myjext/labextension"
     }
 }
-
