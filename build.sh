@@ -58,7 +58,7 @@ build_cxx () {
         popd
     elif [[ "$builder" == "ninja" ]]; then
         mkdir -p build.ninja
-        cd build.ninja
+        pushd build.ninja
         cmake -GNinja -DCMAKE_CXX_COMPILER=$cxx \
               -DCMAKE_BUILD_TYPE=$build_type \
               ../src &&
@@ -71,14 +71,14 @@ build_cxx () {
 }
 
 build_py () {
-    if [[ "mode" == "editable" ]]; then
+    if [[ "$mode" == "editable" ]]; then
         pip install --no-build-isolation -e .
-        jupyter labextension develop . --overwrite
+        CROQUIS_UNITTEST=1 jupyter labextension develop . --overwrite
 
         # Update sourcemap so that breakpoints work on vscode.
         python misc/fix_sourcemap.py \
-            src/myjext/labextension/static \
-            'webpack://myjext-js/' \
+            src/croquis/labextension/static \
+            'webpack://croquis-js/' \
             src/js
     else
         # TODO: what now?

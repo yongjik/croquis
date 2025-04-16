@@ -16,7 +16,7 @@
         "clean": "npm run clean:lib && npm run clean:labextension && npm run clean:lintcache",
         "clean:lib": "rimraf lib tsconfig.tsbuildinfo",
         "clean:lintcache": "rimraf .eslintcache",
-        "clean:labextension": "rimraf ../myjext/labextension",
+        "clean:labextension": "rimraf ../croquis/labextension",
         "eslint": "eslint . --cache"
     },
     "dependencies": {
@@ -38,6 +38,6 @@
     },
     "jupyterlab": {
         "extension": true,
-        "outputDir": "../myjext/labextension"
+        "outputDir": "../croquis/labextension"
     }
 }

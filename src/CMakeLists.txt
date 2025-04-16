@@ -92,7 +92,7 @@ get_python_config(
 
 # E.g., ".cpython-38-x86_64-linux-gnu.so"
 get_python_config(
-    "import distutils.sysconfig as s; print(s.get_config_var('SO'))"
+    "import distutils.sysconfig as s; print(s.get_config_var('EXT_SUFFIX'))"
     PYTHON_SO_SUFFIX)
 
 # message("PYTHON_INCLUDE_DIR = ${PYTHON_INCLUDE_DIR}")
