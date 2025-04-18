@@ -6,7 +6,7 @@
 # dev environment, we enable extra logging to help debugging.
 
 import os
-import subprocess
+import re
 import sys
 
 if os.environ.get('CROQUIS_UNITTEST'):
@@ -34,5 +34,21 @@ else:
 ''',
               file=sys.stderr)
 
+# Used when connecting to FE to tell us who we are.
+def _init_kernel_id():
+    if HAS_IPYTHON:
+        kernel = get_ipython().kernel
+        conn_file = kernel.config["IPKernelApp"]["connection_file"]
+        m = re.match(r".*kernel-(.*).json", conn_file)
+        return m.group(1)
+    else:
+        return None
+
+CURR_KERNEL_ID = _init_kernel_id()
+
 def is_dev(): return ENV == 'dev'
 def has_ipython(): return HAS_IPYTHON
+
+def kernel_id():
+    assert CURR_KERNEL_ID is not None
+    return CURR_KERNEL_ID

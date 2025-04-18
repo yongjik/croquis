@@ -17,6 +17,7 @@ import { BaseCtxt, Ctxt } from './ctxt';
 import { BufList, Callback } from './types';
 
 // Mime type used for this extension.
+// Must match //src/croquis/display.py
 const MIME_TYPE = 'application/vnd.croquis+json';
 
 // Public API for BE communication: created by KernelEntry.get_comm().
@@ -74,7 +75,7 @@ class KernelEntry {
                 this._BE_ready_reject = reject;
             });
 
-            this._raw_comm = this.kernel.createComm("myjext");
+            this._raw_comm = this.kernel.createComm("croquis");
             this._raw_comm.onMsg = (msg) => { this._msg_dispatcher(msg) };
             this._raw_comm.open({"msg": "FE_loaded"});
         }
@@ -157,7 +158,7 @@ class KernelRegistry {
     private _kernels: Map<string, KernelEntry> = new Map();
 }
 
-export class MyJextWidget extends Widget implements IRenderMime.IRenderer {
+export class CroquisWidget extends Widget implements IRenderMime.IRenderer {
     constructor(
         app: JupyterFrontEnd,
         registry: KernelRegistry,
@@ -207,8 +208,8 @@ export class MyJextWidget extends Widget implements IRenderMime.IRenderer {
 }
 
 const plugin: JupyterFrontEndPlugin<void> = {
-    id: 'myjext-js',
-    description: 'Test extension for mime rendering with messaging.',
+    id: 'croquis-js',
+    description: 'Frontend plugin for croquis.',
     autoStart: true,
     requires: [
         IRenderMimeRegistry,
@@ -224,7 +225,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
         const rendererFactory: IRenderMime.IRendererFactory = {
             safe: true,
             mimeTypes: [MIME_TYPE],
-            createRenderer: options => new MyJextWidget(app, registry, options),
+            createRenderer: options => new CroquisWidget(app, registry, options),
         };
 
         // Copied from createRendermimePlugin in @jupyterlab/application.
@@ -234,6 +235,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
     }
 };
 
-console.log("myjext extension loaded !!!");
+console.log("croquis extension loaded !!!");
 
 export default plugin;
