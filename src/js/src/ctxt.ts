@@ -6,7 +6,6 @@ import { AnyJson, BufList, Callback } from './types';
 
 import { Tile } from './tile'
 import { TileHandler } from './tile_handler';
-import { PROGRESSBAR_TIMEOUT } from './util';
 
 // Base class for the canvas context.
 // To minimize coupling betweein Jupyter notebook and our code, index.ts only
@@ -59,12 +58,6 @@ export class Ctxt extends BaseCtxt {
         if (this._log_area) {
             this.dbglog("Cell ID = ", ctxt_id);
         }
-
-        // Prepare the progress indicator to fire if BE takes too long.
-        window.setTimeout(() => {
-            let bar = node.querySelector("div.cr_progressbar") as HTMLElement;
-            if (bar) bar.style.visibility = "visible";
-        }, PROGRESSBAR_TIMEOUT);
     }
 
     // Cleanup handler: tell the server that this canvas is gone.
@@ -75,10 +68,14 @@ export class Ctxt extends BaseCtxt {
 
     // Helper function to send a message.
     // TODO: Do we need this wrapper?
-    send(msg: string, more_data?: AnyJson): Promise<CommWrapper> {
+    send(msg: string, more_data?: AnyJson) {
         let data: AnyJson = more_data || {};
         data.msg = msg;
-        return this._comm.then((comm) => comm.send(data));
+        this._comm.then(
+            (comm) => comm.send(data)
+        ).catch(
+            (err) => this._tile_handler.status_bar.on_comm_error(err)
+        );
     }
 
     // Handler for BE message.

@@ -17,7 +17,7 @@ let is_debug = (ctxt_id: string) => ctxt_id.endsWith("-dbg");
 //        - div .cr_y_axis : y axis
 //        - div cr_canvas_plus_x_axis
 //          - div .cr_canvas : the main canvas --> CtxtImpl.canvas
-//            - div .cr_progressbar : "please wait" message
+//            - div .cr_statusbar   : "please wait" or "connection not found"
 //            - div .cr_inner       : regular (non-highlight) tiles go here
 //            - div .cr_foreground  : highlight tiles go here
 //            - div .cr_grid        : coordinate grids

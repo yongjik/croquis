@@ -6,6 +6,7 @@ import { Ctxt } from './ctxt';
 import { apply_css_tree, apply_flex, disable_drag } from './css_helper';
 import { EventCallbackMap, EventReplayer, ReplayStatus } from './event_replayer';
 import { Label } from './label';
+import { StatusBar } from './status_bar';
 import { Tile } from './tile';
 import { CanvasResetMode, TileSet } from './tile_set';
 import { AnyJson, UNKNOWN } from './types';
@@ -16,7 +17,6 @@ import {
     ITEM_ID_SENTINEL,
     LRUCache,
     PopupBox,
-    PROGRESSBAR_TIMEOUT,
     sqr,
     unhide,
     ZOOM_FACTOR,
@@ -159,7 +159,7 @@ export class TileHandler {
 <div class="cr_canvas_plus_x_axis">
   <div class="cr_canvas">
     <div class="cr_height_adjuster"></div>
-    <div class="cr_progressbar">Please wait, the graph is being generated ...</div>
+    <div class="cr_statusbar"></div>
     <div class="cr_inner"></div>
     <div class="cr_foreground"></div>
     <div class="cr_grid"></div>
@@ -242,7 +242,7 @@ export class TileHandler {
 
             // Miscellaneous.
             ['.cr_canvas', 'overflow: hidden; position: relative;'],
-            ['.cr_progressbar, .cr_inner, .cr_foreground, ' +
+            ['.cr_statusbar, .cr_inner, .cr_foreground, ' +
                  '.cr_grid, .cr_select_area',
              'position: absolute; left: 0px; top: 0px;'],
 
@@ -285,6 +285,8 @@ export class TileHandler {
         });
 
         this._ctxt = ctxt;
+
+        this.status_bar = new StatusBar(qs(".cr_statusbar"));
 
         // Set up the tile set and resize observer.
         this._canvas = parent_elem.querySelector(".cr_canvas") as HTMLElement;
@@ -505,10 +507,8 @@ export class TileHandler {
         }
 
         // Remove progress bar (if exists).
-        if (this.tile_set.visible_tiles.size > 0) {
-            const bar = this._canvas.querySelector('.cr_progressbar');
-            if (bar) bar.remove();
-        }
+        if (this.tile_set.visible_tiles.size > 0)
+            this.status_bar.on_comm_ok();
 
         // See if we can ask more tiles, if update was previously stalled.
         // TODO: Handle replay?
@@ -1047,7 +1047,7 @@ export class TileHandler {
         }
 
         this._update_T = this._replayer.rel_time;
-        if (this._hide_cb) {
+        if (this._hide_cb != null) {
             window.clearTimeout(this._hide_cb);
             this._hide_cb = null;
         }
@@ -1377,6 +1377,7 @@ export class TileHandler {
     private _replayer: EventReplayer;
 
     private _ctxt: Ctxt;
+    status_bar: StatusBar;
     tile_set: TileSet;
     private _resize_observer: ResizeObserver;
     private _canvas: HTMLElement;

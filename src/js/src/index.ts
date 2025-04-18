@@ -204,7 +204,6 @@ export class CroquisWidget extends Widget implements IRenderMime.IRenderer {
     private _registry: KernelRegistry;
     private _ctxt_id: string | null = null;
     private _ctxt: BaseCtxt | null = null;
-    //  private _comm: Promise<CommWrapper> | null = null;
 }
 
 const plugin: JupyterFrontEndPlugin<void> = {

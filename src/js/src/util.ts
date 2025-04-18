@@ -1,6 +1,5 @@
 // Miscellaneous constants and utility functions.
 
-export const PROGRESSBAR_TIMEOUT = 500;  // ms
 export const TILE_SIZE = 256;
 export const ZOOM_FACTOR = 1.5;  // Must match constants.h.
 export const ITEM_ID_SENTINEL = Number.MAX_SAFE_INTEGER;  // Used by Label.
