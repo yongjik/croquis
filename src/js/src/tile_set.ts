@@ -38,10 +38,11 @@ export class TileSet {
 
     // Send the `canvas_config_req` message when the canvas was resized.
     resize_canvas(how: CanvasResetMode) {
+        const is_resize = (how == CanvasResetMode.RESIZE);
         const w = Math.round(this.canvas.clientWidth);
         const h = Math.round(this.canvas.clientHeight);
 
-        if (how == CanvasResetMode.RESET &&
+        if (is_resize &&
             w == this.last_config_req.width &&
             h == this.last_config_req.height) {
             // console.log(`Not sending resize canvas msg ${this._ctxt_id} ` +
@@ -59,7 +60,7 @@ export class TileSet {
             height: h,
         };
 
-        if (this.has_valid_config()) {
+        if (is_resize && this.has_valid_config()) {
             this.ctxt.send('canvas_config_req', {
                 config_id: new_config_id,
                 w: w,
@@ -69,7 +70,9 @@ export class TileSet {
             });
         }
         else {
-            console.log('No valid config yet, asking for reset ...');
+            if (is_resize) {
+                console.log('No valid config yet, asking for reset ...');
+            }
             this.ctxt.send('canvas_config_req', {
                 config_id: new_config_id,
                 w: w,

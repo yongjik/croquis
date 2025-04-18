@@ -62,7 +62,7 @@ export function apply_template(node: HTMLElement, ctxt_id: string) {
             </span>
             &nbsp; Drag mouse to:
             <input type="radio" name="${ctxt_id}-radio"
-                   id="${ctxt_id}-zoom" value="zoom" checked/>
+                   id="${ctxt_id}-zoom" class="cr_zoom" value="zoom" checked/>
             <label for="${ctxt_id}-zoom">zoom</label>
             <input type="radio" name="${ctxt_id}-radio"
                    id="${ctxt_id}-pan" value="pan"/>
