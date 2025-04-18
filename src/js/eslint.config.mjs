@@ -15,6 +15,11 @@ export default [
     files: ["src/**/*.{js,mjs,cjs,ts}"],
     rules: {
       "prefer-const": "off",
+      "no-constant-condition": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {argsIgnorePattern: "^_"},
+      ],
     },
   },
 ];

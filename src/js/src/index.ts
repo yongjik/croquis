@@ -14,7 +14,7 @@ import { Widget } from '@lumino/widgets';
 import { ICommMsgMsg } from '@jupyterlab/services/lib/kernel/messages';
 
 import { BaseCtxt, Ctxt } from './ctxt';
-import { BufList, Callback } from './types';
+import { Callback } from './types';
 
 // Mime type used for this extension.
 // Must match //src/croquis/display.py
@@ -117,7 +117,9 @@ class KernelEntry {
     _raw_comm: Kernel.IComm | null = null;  // used by CommWrapper.
     BE_id: string | null = null;
     private _BE_ready: Promise<void> | null = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private _BE_ready_resolve: any = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private _BE_ready_reject: any = null;
     private _ctxt_map: Map<string, Callback> = new Map();
 }
@@ -175,7 +177,6 @@ export class CroquisWidget extends Widget implements IRenderMime.IRenderer {
         super.dispose();
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     renderModel(model: IRenderMime.IMimeModel): Promise<void> {
         const val1 = model.data?.[MIME_TYPE] as ReadonlyPartialJSONObject;
         const kernel_id = val1?.["kernel_id"] as string;

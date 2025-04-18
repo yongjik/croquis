@@ -11,7 +11,6 @@ import { Tile } from './tile';
 import { CanvasResetMode, TileSet } from './tile_set';
 import { AnyJson, UNKNOWN } from './types';
 import {
-    hide,
     HighlightType,
     INFLIGHT_REQ_EXPIRE_MSEC,
     ITEM_ID_SENTINEL,
@@ -88,7 +87,7 @@ class PtData {
 // point every time the mouse stopped anyway.
 class NearestPts {
     constructor() {
-        this._cache = new LRUCache<string, PtData>(10, (oldv, newv) => true);
+        this._cache = new LRUCache<string, PtData>(10, (_oldv, _newv) => true);
     }
 
     // config_id/zoom_level/x_offset/y_offset: describes the
@@ -278,7 +277,7 @@ export class TileHandler {
             clear3: () => this.clear_highlight3(),
 
             tile: (args: AnyJson) => {
-                return new Promise((resolve, reject) => {
+                return new Promise((resolve, _reject) => {
                     this.tile_replay_handler(resolve, args.keys, 0);
                 });
             },
@@ -316,10 +315,10 @@ export class TileHandler {
 
         let ctrl_elem = root.querySelector(".cr_ctrl_panel") as HTMLElement;
         let qs_ctrl = (selector: string) => ctrl_elem.querySelector(selector);
-        qs_ctrl('.cr_home_btn')!.addEventListener('click', (ev) => {
+        qs_ctrl('.cr_home_btn')!.addEventListener('click', (_ev) => {
             this.tile_set.resize_canvas(CanvasResetMode.RESET);
         });
-        qs_ctrl('.cr_zoom_in_btn')!.addEventListener('click', (ev) => {
+        qs_ctrl('.cr_zoom_in_btn')!.addEventListener('click', (_ev) => {
             this.tile_set.zoom_level++;
             this.tile_set.x_offset *= ZOOM_FACTOR;
             this.tile_set.y_offset *= ZOOM_FACTOR;
@@ -327,7 +326,7 @@ export class TileHandler {
             this.axis_handler.update_location(true);
             this.request_new_tiles();
         });
-        qs_ctrl('.cr_zoom_out_btn')!.addEventListener('click', (ev) => {
+        qs_ctrl('.cr_zoom_out_btn')!.addEventListener('click', (_ev) => {
             this.tile_set.zoom_level--;
             this.tile_set.x_offset /= ZOOM_FACTOR;
             this.tile_set.y_offset /= ZOOM_FACTOR;
@@ -345,7 +344,7 @@ export class TileHandler {
 
         this._btn_popup = new PopupBox(qs('.cr_btn_popup'));
 
-        qs('.cr_more')!.addEventListener('click', (ev) => {
+        qs('.cr_more')!.addEventListener('click', (_ev) => {
             if (this._searchbox.value != '') {
                 this._btn_select_matching.textContent =
                     'Select all matching ' + this._searchbox.value;
@@ -483,6 +482,7 @@ export class TileHandler {
 
         // Asking for tiles one by one is very inefficient, but let's not
         // bother, because we're just replaying.
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const [config_id, zoom_level, row, col, item_id] =
             key.split(':').map(v => parseInt(v));
 
@@ -1114,7 +1114,7 @@ export class TileHandler {
         }
     }
 
-    autoselect_handler(ev: Event) {
+    autoselect_handler(_ev: Event) {
         if (this._btn_autoselect.checked) {
             // Select all currently shown labels.
             for (let label of this._labels) {
@@ -1225,7 +1225,7 @@ export class TileHandler {
                     (label, ev) => this.label_mouse_handler(label, ev));
 
                 let checkbox = new_label.checkbox!;
-                checkbox.addEventListener('change', (ev) => {
+                checkbox.addEventListener('change', (_ev) => {
                     this._btn_autoselect.checked = false;
                     this._ctxt.send('update_selection', {
                         version: this.tile_set.new_sm_version(),

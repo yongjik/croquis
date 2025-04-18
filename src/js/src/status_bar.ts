@@ -16,7 +16,7 @@ export class StatusBar {
         }, PROGRESSBAR_TIMEOUT);
     }
 
-    on_comm_error(err: string) {
+    on_comm_error(_err: string) {
         this.clear_cb();
         this._status = GraphStatus.ERROR;
         this._bar.innerHTML =

@@ -51,7 +51,6 @@ export class Ctxt extends BaseCtxt {
         apply_template(node, ctxt_id);
 
         // TileHandler constructor also builds the inner HTML structure.
-        let parent_elem = node.querySelector(".cr_main1");
         this._tile_handler = new TileHandler(this);
 
         this._log_area = node.querySelector(".cr_dbglog");
@@ -113,6 +112,7 @@ export class Ctxt extends BaseCtxt {
     }
 
     // Helper function for debug logging.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     dbglog(...args: any[]) {
         if (this._log_area) {
             const s = args.map(

@@ -111,7 +111,7 @@ export class EventReplayer {
             this.load_handler(contents!);
         };
 
-        input.onchange = (ev: Event) => {
+        input.onchange = (_ev: Event) => {
             let file = input.files![0];
             if (file == null) return;
             let reader = new FileReader();
@@ -211,7 +211,7 @@ export class EventReplayer {
 
             this.status_area!.textContent = `Executed ${event_str}.`;
         })
-        .catch((error: any) => {
+        .catch((error: string) => {
             this.status_area!.textContent =
                 `Error executing ${event_str}: ${error}`;
             this.status = ReplayStatus.DISABLED;
@@ -235,6 +235,7 @@ export class EventReplayer {
     }
 
     // Add debug logging.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     log(...args: any[]) {
         if (!this.enabled) return;
 
