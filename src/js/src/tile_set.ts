@@ -10,56 +10,39 @@ import {
     TILE_SIZE
 } from './util';
 
+export enum CanvasResetMode {
+    RESET = "reset",    // unconditional reset
+    RESIZE = "resize",  // redraw the current canvas in new size
+}
+
 const TILE_CACHE_MAXSIZE = 500;
 
-class ConfigReq {
-    constructor(
-        public config_id: number,
-        public width: number | null,
-        public height: number | null,
-    ) { }
+interface ConfigReq {
+    config_id: number;
+    width: number;
+    height: number;
 }
 
 export class TileSet {
-    constructor(ctxt: Ctxt) {
-        this.ctxt = ctxt;
+    constructor(
+        private ctxt: Ctxt,
+        private canvas: HTMLElement
+    ) {
         this._ctxt_id = ctxt.ctxt_id;
-        this.canvas = document.querySelector(`#${this._ctxt_id} .cr_canvas`) as HTMLElement;
         this.inner_div = this.canvas.querySelector('.cr_inner') as HTMLElement;
         this.fg = this.canvas.querySelector('.cr_foreground') as HTMLElement;
     }
 
-    // TODO: Too much duplicate code among reset_canvas(), resize_canvas(), and
+    // TODO: Too much duplicate code between resize_canvas() and
     //       send_zoom_req() !!
 
-    // Send the `canvas_config_req` message to reset the canvas.
-    reset_canvas() {
-        const new_config_id = this.last_config_req.config_id + 1;
-        const w = Math.round(this.canvas.clientWidth);
-        const h = Math.round(this.canvas.clientHeight);
-        console.log(`Reset canvas ${this._ctxt_id} ` +
-                    `config_id=${new_config_id} w=${w} h=${h}`);
-
-        this.last_config_req = {
-            config_id: new_config_id,
-            width: w,
-            height: h,
-        };
-
-        this.ctxt.send('canvas_config_req', {
-            config_id: new_config_id,
-            w: w,
-            h: h,
-            how: 'reset'
-        });
-    }
-
     // Send the `canvas_config_req` message when the canvas was resized.
-    resize_canvas() {
+    resize_canvas(how: CanvasResetMode) {
         const w = Math.round(this.canvas.clientWidth);
         const h = Math.round(this.canvas.clientHeight);
 
-        if (w == this.last_config_req.width &&
+        if (how == CanvasResetMode.RESET &&
+            w == this.last_config_req.width &&
             h == this.last_config_req.height) {
             // console.log(`Not sending resize canvas msg ${this._ctxt_id} ` +
             //             `size already matches w=${w} h=${h}.`);
@@ -404,9 +387,7 @@ export class TileSet {
         return (this.sm_version += 2);
     }
 
-    private ctxt: Ctxt;
     private _ctxt_id: string;
-    private canvas: HTMLElement;
     private inner_div: HTMLElement;
     private fg: HTMLElement;
 
@@ -416,20 +397,24 @@ export class TileSet {
     config_id: number = -1;
     width: number = -1;
     height: number = -1;
-    private x0: number = NaN;
-    private y0: number = NaN;
-    private x1: number = NaN;
-    private y1: number = NaN;
-    zoom_level: number = NaN;
+    private x0: number | null = null;
+    private y0: number | null = null;
+    private x1: number | null = null;
+    private y1: number | null = null;
+    zoom_level: number = 0;
 
     // Panning offset, using screen coordinate.  E.g., if offset is (10, 3),
     // then the tiles are shifted 10 pixels to the right and 3 pixels down.
-    x_offset: number = NaN;
-    y_offset: number = NaN;
+    x_offset: number = 0;
+    y_offset: number = 0;
 
     // The last requested canvas config: x0/y0/x1/y1 are not yet available
     // because they're computed by BE.
-    private last_config_req = new ConfigReq(-1, null, null);
+    private last_config_req: ConfigReq = {
+        config_id: -1,
+        width: 0,
+        height: 0,
+    };
 
     //--------------------------------------------
 

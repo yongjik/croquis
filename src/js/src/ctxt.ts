@@ -4,25 +4,27 @@ import type { CommWrapper } from './index';
 import { apply_template } from './template';
 import { AnyJson, BufList, Callback } from './types';
 
-// XXX TODO
 import { Tile } from './tile'
 import { TileHandler } from './tile_handler';
 import { PROGRESSBAR_TIMEOUT } from './util';
-
 
 // Base class for the canvas context.
 // To minimize coupling betweein Jupyter notebook and our code, index.ts only
 // depends on BaseCtxt and not Ctxt.
 export abstract class BaseCtxt {
-    constructor(node: HTMLElement, ctxt_id: string,
-                get_comm: (callback: Callback) => Promise<CommWrapper>) {
-        this._node = node;
-        this._ctxt_id = ctxt_id;
-
+    constructor(
+        protected _root_node: HTMLElement,
+        protected _ctxt_id: string,
+        get_comm: (callback: Callback) => Promise<CommWrapper>
+    ) {
         this._comm = get_comm((msg, buf) => { this._callback(msg, buf) });
     }
 
     dispose() { }
+
+    get root_node(): HTMLElement {
+        return this._root_node;
+    }
 
     get ctxt_id(): string {
         return this._ctxt_id;
@@ -34,8 +36,6 @@ export abstract class BaseCtxt {
 
     protected abstract _callback(msg_dict: AnyJson, attachments: BufList): void;
 
-    protected _node: HTMLElement;
-    protected _ctxt_id: string;
     protected _comm: Promise<CommWrapper>;
 }
 
@@ -53,66 +53,24 @@ export class Ctxt extends BaseCtxt {
 
         // TileHandler constructor also builds the inner HTML structure.
         let parent_elem = node.querySelector(".cr_main1");
-        parent_elem!.innerHTML = '';
-        this._tile_handler = new TileHandler(this, parent_elem as HTMLElement);
+        this._tile_handler = new TileHandler(this);
 
         this._log_area = node.querySelector(".cr_dbglog");
         if (this._log_area) {
             this.dbglog("Cell ID = ", ctxt_id);
         }
 
-// XXX OK what should I do with this???
-/* ------------------------------
-
-        // Pedantic: must be after `this._tile_handler` is initialized, because
-        // after this this.resize_handler() may be called, which uses
-        // `_tile_handler`.
-        env.ctxt_map[canvas_id] = this;
-
---------------------------------- */
-
-        // Get the current window size and send it as part of the init
-        // request.
-        this._tile_handler.tile_set.reset_canvas();
-        this._tile_handler.search_handler(null);
-
         // Prepare the progress indicator to fire if BE takes too long.
         window.setTimeout(() => {
             let bar = node.querySelector("div.cr_progressbar") as HTMLElement;
             if (bar) bar.style.visibility = "visible";
         }, PROGRESSBAR_TIMEOUT);
-
-        // console.log(
-        //     'bounding rect = ', this.canvas[0].getBoundingClientRect());
-
-        // XXX OK it looks like we can now use ResizeObserver, like this:
-
-        /*
-            // Select the element to observe
-            const observedElement = document.getElementById("myElement");
-
-            // Create a ResizeObserver instance
-            const resizeObserver = new ResizeObserver((entries) => {
-                for (let entry of entries) {
-                    console.log(`Size changed:`, entry.contentRect);
-                }
-            });
-
-            // Start observing the element
-            resizeObserver.observe(observedElement);
-
-            // To stop observing later, you can call:
-            // resizeObserver.unobserve(observedElement);
-            // resizeObserver.disconnect(); // To stop observing all elements
-        */
-
-        // TODO: resize_handler() removed here, should just handle it directly
-        // inside TileHandler (.tile_set.resize_canvas())
     }
 
     // Cleanup handler: tell the server that this canvas is gone.
     dispose() {
         this.send('cell_fini');
+        this._tile_handler.cleanup();
     }
 
     // Helper function to send a message.

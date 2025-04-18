@@ -4,7 +4,7 @@ let is_debug = (ctxt_id: string) => ctxt_id.endsWith("-dbg");
 
 // Current setup:
 //  - div .croquis_nbext : outermost container
-//    - div #{{ctxt_id}}-btns : buttons for debugging
+//    - div .cr_dbg_btns : buttons for debugging
 //    - div #{{ctxt_id}} .cr_main : the whole area including axes
 //      - div .cr_ctrl_panel : "Control panel" at the top.
 //        - span .cr_ctrl_btns
@@ -16,7 +16,7 @@ let is_debug = (ctxt_id: string) => ctxt_id.endsWith("-dbg");
 //      - div .cr_main1
 //        - div .cr_y_axis : y axis
 //        - div cr_canvas_plus_x_axis
-//          - div .cr_canvas : the main canvas --> CtxtImple.canvas
+//          - div .cr_canvas : the main canvas --> CtxtImpl.canvas
 //            - div .cr_progressbar : "please wait" message
 //            - div .cr_inner       : regular (non-highlight) tiles go here
 //            - div .cr_foreground  : highlight tiles go here
@@ -36,7 +36,7 @@ let is_debug = (ctxt_id: string) => ctxt_id.endsWith("-dbg");
 //          - ul .cr_search_result : labels matching the search pattern
 //          // Currently commented out:
 //          // - div .cr_info : info about what's under the mouse cursor
-//    - div id={{canvs_id}}-log : debug logs --> CtxtImple.log_area
+//    - div .cr_dbglog : debug logs --> CtxtImple.log_area
 //
 // See also display.py for HTML structure.
 export function apply_template(node: HTMLElement, ctxt_id: string) {
@@ -47,7 +47,7 @@ export function apply_template(node: HTMLElement, ctxt_id: string) {
 
     let template = `
       <div class="croquis_nbext">
-!       <div id="${ctxt_id}-btns" class="cr_dbg_btns">
+!       <div class="cr_dbg_btns">
 !         <button>Record</button> <button>Stop</button>
 !         <button>Save</button> <button>Load</button>
 !         <button>Replay</button> <button>Clear</button>
@@ -73,7 +73,7 @@ export function apply_template(node: HTMLElement, ctxt_id: string) {
           </div>
 !         <div class="cr_dbg_status"></div>
         </div>
-!       <div id="${ctxt_id}-log" class="cr_dbglog"><b>Debug logging</b><br /></div>
+!       <div class="cr_dbglog"><b>Debug logging</b><br /></div>
       </div>
     `;
 

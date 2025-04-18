@@ -7,7 +7,7 @@ import { apply_css_tree, apply_flex, disable_drag } from './css_helper';
 import { EventCallbackMap, EventReplayer, ReplayStatus } from './event_replayer';
 import { Label } from './label';
 import { Tile } from './tile';
-import { TileSet } from './tile_set';
+import { CanvasResetMode, TileSet } from './tile_set';
 import { AnyJson, UNKNOWN } from './types';
 import {
     hide,
@@ -140,8 +140,11 @@ class NearestPts {
 }
 
 export class TileHandler {
-    constructor(ctxt: Ctxt, parent_elem: HTMLElement) {
+    constructor(ctxt: Ctxt) {
         // Shorthand.
+        const root: HTMLElement = ctxt.root_node;
+        const parent_elem =
+            ctxt.root_node.querySelector(".cr_main1") as HTMLElement;
         let qs = (selector: string) =>
             parent_elem.querySelector(selector) as HTMLElement;
 
@@ -259,8 +262,7 @@ export class TileHandler {
         this._tile_replay_buf = [];
 
         // Initialize replay handler for debugging.
-        let btns_div =
-            document.querySelector(`#${ctxt.ctxt_id}-btns`) as HTMLElement;
+        let btns_div = root.querySelector("cr_dbg_btns") as HTMLElement;
         this._replayer = new EventReplayer(btns_div, {
             reset: () => {
                 this.tile_set.set_highlight(null, null);
@@ -283,15 +285,23 @@ export class TileHandler {
         });
 
         this._ctxt = ctxt;
-        this.tile_set = new TileSet(ctxt);
-        this._canvas =
-            document.querySelector(`#${ctxt.ctxt_id} .cr_canvas`) as HTMLElement;
+
+        // Set up the tile set and resize observer.
+        this._canvas = parent_elem.querySelector(".cr_canvas") as HTMLElement;
+        this.tile_set = new TileSet(ctxt, this._canvas);
+        this._resize_observer = new ResizeObserver(() => {
+            // The first time, it will run in "reset" mode because we don't have
+            // a valid config yet.
+            this.tile_set.resize_canvas(CanvasResetMode.RESIZE);
+        });
+        this._resize_observer.observe(this._canvas);
+
         this.axis_handler = new AxisHandler(
             ctxt, this, this._replayer, parent_elem);
         this._fg = this._canvas.querySelector('.cr_foreground') as HTMLElement;
 
-        this._mouse_handler = new CanvasMouseHandler(
-            ctxt.ctxt_id, this, this._replayer, this._canvas);
+        this._mouse_handler =
+            new CanvasMouseHandler(ctxt, this, this._replayer);
         this._tooltip = qs('.cr_tooltip');
         this.nearest_pts = new NearestPts();
 
@@ -302,11 +312,10 @@ export class TileHandler {
 
         this._search_result_area = qs('.cr_search_result');
 
-        let ctrl_elem =
-            document.querySelector(`#${ctxt.ctxt_id} .cr_ctrl_panel`) as HTMLElement;
+        let ctrl_elem = root.querySelector(".cr_ctrl_panel") as HTMLElement;
         let qs_ctrl = (selector: string) => ctrl_elem.querySelector(selector);
         qs_ctrl('.cr_home_btn')!.addEventListener('click', (ev) => {
-            this.tile_set.reset_canvas();
+            this.tile_set.resize_canvas(CanvasResetMode.RESET);
         });
         qs_ctrl('.cr_zoom_in_btn')!.addEventListener('click', (ev) => {
             this.tile_set.zoom_level++;
@@ -369,6 +378,11 @@ export class TileHandler {
         this._search_stat_area = qs('.cr_search_stat');
 
         this.reset_state();
+        this.search_handler(null);
+    }
+
+    cleanup() {
+        this._resize_observer.disconnect();
     }
 
     // Utility function for initializing/resetting internal state.
@@ -1364,6 +1378,7 @@ export class TileHandler {
 
     private _ctxt: Ctxt;
     tile_set: TileSet;
+    private _resize_observer: ResizeObserver;
     private _canvas: HTMLElement;
     axis_handler: AxisHandler;
     private _fg: HTMLElement;

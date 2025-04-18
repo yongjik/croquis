@@ -66,7 +66,7 @@ class CommManager(object):
     # Send a message.  `attachments` is an optional list of memoryview objects
     # (or some objects that supports the buffer protocol).
     def send(self, canvas_id, msgtype, attachments=None, **kwargs):
-        kwargs.update(canvas_id=canvas_id, msg=msgtype)
+        kwargs.update(ctxt_id=canvas_id, msg=msgtype)
         if attachments is not None:
             if attachments == []:
                 attachments = None
@@ -93,7 +93,7 @@ class CommManager(object):
         logger.debug('Data received from client: %s', msg)
         try:
             data = msg['content']['data']
-            canvas_id = data['canvas_id']
+            canvas_id = data['ctxt_id']
             msgtype = data['msg']
         except KeyError:
             logger.error('Malformed message: %s', msg)

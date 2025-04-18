@@ -1,6 +1,7 @@
 // Encapsulates mouse interaction inside the canvas.
 
 import type { TileHandler} from './tile_handler';
+import { Ctxt } from './ctxt';
 import { EventReplayer, ReplayStatus } from './event_replayer';
 import { AnyJson } from './types';
 import { assert, sqr } from './util';
@@ -23,21 +24,17 @@ export enum ButtonStatus {
 
 export class CanvasMouseHandler {
     constructor(
-        ctxt_id: string,
-        parent: TileHandler,
-        replayer: EventReplayer,
-        canvas: HTMLElement,
+        ctxt: Ctxt,
+        private parent: TileHandler,
+        private replayer: EventReplayer,
     ) {
         this.parent = parent;
         this.replayer = replayer;
-        this.canvas = canvas;
+        this.canvas = ctxt.root_node.querySelector(".cr_canvas") as HTMLElement;
         this.zoom_radio_btn =
-            document.querySelector(`#${ctxt_id}-zoom`)! as HTMLInputElement;
+            ctxt.root_node.querySelector(".cr_zoom") as HTMLInputElement;
         this.select_area = this.canvas.querySelector('.cr_select_area')!;
 
-        this.mouse_stopped_cb = null;
-        // XXX remove!
-        // this.move = 'moving';
         this.reset();
 
         for (let evname of ['mousedown', 'mouseleave',
@@ -214,7 +211,7 @@ export class CanvasMouseHandler {
     }
 
     clear_mouse_stop_cb() {
-        if (this.mouse_stopped_cb) {
+        if (this.mouse_stopped_cb != null) {
             window.clearTimeout(this.mouse_stopped_cb);
             this.mouse_stopped_cb = null;
         }
@@ -239,13 +236,10 @@ export class CanvasMouseHandler {
         return this.btn + '-' + this.move;
     }
 
-    private parent: TileHandler;
-    private replayer: EventReplayer;
     private canvas: HTMLElement;
-
     private zoom_radio_btn: HTMLInputElement;
     private select_area: HTMLElement;
-    private mouse_stopped_cb: any = null;  // XXX
+    private mouse_stopped_cb: number | null = null;
 
     move: MouseStatus = MouseStatus.MOVING;
     private btn: ButtonStatus = ButtonStatus.UP;
