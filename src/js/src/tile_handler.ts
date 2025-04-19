@@ -297,8 +297,7 @@ export class TileHandler {
         });
         this._resize_observer.observe(this._canvas);
 
-        this.axis_handler = new AxisHandler(
-            ctxt, this, this._replayer, parent_elem);
+        this.axis_handler = new AxisHandler(ctxt, this, this._replayer);
         this._fg = this._canvas.querySelector('.cr_foreground') as HTMLElement;
 
         this._mouse_handler =
