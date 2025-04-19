@@ -22,4 +22,19 @@ export default [
       ],
     },
   },
+  {
+    files: ["src/**/*.ts"],
+    rules: {
+      "@typescript-eslint/explicit-function-return-type": ["error"],
+      "@typescript-eslint/naming-convention": [
+        "warn",
+        {
+          selector: "memberLike",
+          modifiers: ["private"],
+          format: null,
+          leadingUnderscore: "require",
+        },
+      ],
+    },
+  },
 ];

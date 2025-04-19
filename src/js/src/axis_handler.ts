@@ -51,14 +51,14 @@ class AxisTick {
     }
 
     // Acts as a "destructor" - remove myself from display.
-    remove() {
+    remove(): void {
         this._tick.remove();
         this._label.remove();
         this._line.remove();
     }
 
     // Update location after panning.
-    update_location() {
+    update_location(): void {
         let tile_set: TileSet = this._handler.tile_handler.tile_set;
 
         const [offset, limit] =
@@ -101,7 +101,7 @@ export class AxisHandler {
     // Remove all known ticks and re-create them, following new information sent
     // from the backend.
     // Message type is either 'canvas_config' or 'axis_ticks'.
-    update(msg_dict: AnyJson) {
+    update(msg_dict: AnyJson): void {
         if (msg_dict.msg == 'canvas_config') {
             // Reset sequence #.
             this._last_seq = -1;
@@ -132,7 +132,7 @@ export class AxisHandler {
     }
 
     // Update ticks based on new location.
-    update_location(zoom_udpated: boolean) {
+    update_location(zoom_udpated: boolean): void {
         for (let tick of this._ticks) tick.update_location();
 
         let tile_set = this.tile_handler.tile_set;
@@ -167,7 +167,7 @@ export class AxisHandler {
 
     // Forget in-flight requests that are too old.
     // TODO: Refactor and merge with TileHandler.expire_old_requests() ?
-    expire_old_requests() {
+    expire_old_requests(): void {
         let deadline = Date.now() - INFLIGHT_REQ_EXPIRE_MSEC;
         for (let [seq_no, timestamp] of this._inflight_reqs) {
             if (timestamp < deadline) {

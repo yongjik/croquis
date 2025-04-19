@@ -16,7 +16,7 @@ import { assert } from './util.js';
 // Helper function.
 function apply_over_children(
     elem: HTMLElement, selector: string, f: (_: HTMLElement) => void
-) {
+): void {
     let children = elem.querySelectorAll(selector);
     assert(children.length > 0, `No element matching ${selector}`);
     for (let child of children) f(child as HTMLElement);
@@ -52,7 +52,7 @@ export function apply_css(
 // `settings` is an array of pairs (selector, "property: value; (...)").
 export function apply_css_tree(
     elem: HTMLElement, settings: [string, string][]
-) {
+): void {
     for (let [selector, css] of settings) {
         let kv = parsePseudoCSS(css);
         apply_over_children(elem, selector, (child) => {
@@ -61,7 +61,7 @@ export function apply_css_tree(
     }
 }
 
-export function disable_drag(elem: HTMLElement, selectors: string[]) {
+export function disable_drag(elem: HTMLElement, selectors: string[]): void {
     for (let selector of selectors) {
         apply_over_children(elem, selector, (child) => {
             child.draggable = false;
@@ -76,7 +76,7 @@ export function apply_flex(
     elem: HTMLElement,
     dir: "row" | "column",
     flex_settings: [string, string][],
-) {
+): void {
     assert(dir == 'row' || dir == 'column', `Invalid dir ${dir}`);
 
     elem.style.display = 'flex';
