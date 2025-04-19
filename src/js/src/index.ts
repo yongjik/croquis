@@ -22,10 +22,7 @@ const MIME_TYPE = 'application/vnd.croquis+json';
 
 // Public API for BE communication: created by KernelEntry.get_comm().
 export class CommWrapper {
-    constructor(parent: KernelEntry, ctxt_id: string) {
-        this._parent = parent;
-        this._ctxt_id = ctxt_id;
-    }
+    constructor(private _parent: KernelEntry, private _ctxt_id: string) { }
 
     send(msg: JSONObject): Promise<CommWrapper> {
         if (this._parent._raw_comm) {
@@ -36,9 +33,6 @@ export class CommWrapper {
             return Promise.reject("comm is closed!");
         }
     }
-
-    private _parent: KernelEntry;
-    private _ctxt_id: string;
 }
 
 // Holds data for one backend kernel and its connection.
@@ -46,10 +40,8 @@ export class CommWrapper {
 // but the jupyter API is structured in such a way that assumes multiple
 // kernels, so might be better to play along.)
 class KernelEntry {
-    constructor(kernel_id: string, kernel: Kernel.IKernelConnection) {
-        this.kernel_id = kernel_id;
-        this.kernel = kernel;
-    }
+    constructor(public kernel_id: string,
+                public kernel: Kernel.IKernelConnection) { }
 
     private _ensure_comm_open(BE_id: string): Promise<void> {
         if (this.BE_id != BE_id) {
@@ -112,8 +104,6 @@ class KernelEntry {
                    () => new CommWrapper(this, ctxt_id));
     }
 
-    kernel_id: string;
-    kernel: Kernel.IKernelConnection;
     _raw_comm: Kernel.IComm | null = null;  // used by CommWrapper.
     BE_id: string | null = null;
     private _BE_ready: Promise<void> | null = null;
@@ -134,13 +124,13 @@ class KernelRegistry {
         });
     }
 
-    private async register(panel: NotebookPanel) {
+    private async register(panel: NotebookPanel): Promise<void> {
         const sessionContext = panel.context.sessionContext;
         await sessionContext.ready;
 
         const kernel = sessionContext.session?.kernel;
         const kernel_id: string | undefined = kernel?.id;
-        console.log(`kernel id = ${kernel_id}`);
+        // console.log(`kernel id = ${kernel_id}`);
         if (kernel && kernel_id != undefined) {
             this._kernels.set(kernel_id, new KernelEntry(kernel_id, kernel));
         }
@@ -162,17 +152,16 @@ class KernelRegistry {
 
 export class CroquisWidget extends Widget implements IRenderMime.IRenderer {
     constructor(
-        app: JupyterFrontEnd,
-        registry: KernelRegistry,
-        options: IRenderMime.IRendererOptions
+        _app: JupyterFrontEnd,
+        private _registry: KernelRegistry,
+        _options: IRenderMime.IRendererOptions
     ) {
         super();
-        console.log("options = ", options);
-        this._registry = registry;
+        // console.log("options = ", _options);
     }
 
-    dispose() {
-        console.log(`dispose called for: ${this._ctxt_id}`);
+    dispose(): void {
+        // console.log(`dispose called for: ${this._ctxt_id}`);
         this._ctxt?.dispose();
         super.dispose();
     }
@@ -184,10 +173,10 @@ export class CroquisWidget extends Widget implements IRenderMime.IRenderer {
         const ctxt_id = val1?.["ctxt_id"] as string;
         this._ctxt_id = ctxt_id;
 
-        console.log(
-            `renderModel called!  kernel_id=${kernel_id} BE_id=${BE_id} ` +
-            `ctxt_id=${ctxt_id}`
-        );
+        // console.log(
+        //     `renderModel called!  kernel_id=${kernel_id} BE_id=${BE_id} ` +
+        //     `ctxt_id=${ctxt_id}`
+        // );
 
         if (ctxt_id === null) {
             return Promise.reject("no ctxt id!");
@@ -202,7 +191,6 @@ export class CroquisWidget extends Widget implements IRenderMime.IRenderer {
         return this._ctxt.comm.then(() => {});
     }
 
-    private _registry: KernelRegistry;
     private _ctxt_id: string | null = null;
     private _ctxt: BaseCtxt | null = null;
 }
@@ -231,7 +219,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
         // Copied from createRendermimePlugin in @jupyterlab/application.
         rendermime.addFactory(rendererFactory, rank);
 
-        console.log("Finished rendermime.AddFactory!");
+        // console.log("Finished rendermime.AddFactory!");
     }
 };
 

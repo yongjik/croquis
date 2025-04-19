@@ -19,7 +19,7 @@ export abstract class BaseCtxt {
         this._comm = get_comm((msg, buf) => { this._callback(msg, buf) });
     }
 
-    dispose() { }
+    dispose(): void { }
 
     get root_node(): HTMLElement {
         return this._root_node;
@@ -43,11 +43,6 @@ export class Ctxt extends BaseCtxt {
                 get_comm: (callback: Callback) => Promise<CommWrapper>) {
         super(node, ctxt_id, get_comm);
 
-        // XXX okay, I think we don't need "env" any more, index.ts handles that.
-        //     Also cleanup_handler() is now dispose()
-        //     canvas_id is now _ctxt_id
-        //     Hmm now we actually have to build it here ...
-
         apply_template(node, ctxt_id);
 
         // TileHandler constructor also builds the inner HTML structure.
@@ -60,14 +55,14 @@ export class Ctxt extends BaseCtxt {
     }
 
     // Cleanup handler: tell the server that this canvas is gone.
-    dispose() {
+    dispose(): void {
         this.send('cell_fini');
         this._tile_handler.cleanup();
     }
 
     // Helper function to send a message.
     // TODO: Do we need this wrapper?
-    send(msg: string, more_data?: AnyJson) {
+    send(msg: string, more_data?: AnyJson): void {
         let data: AnyJson = more_data || {};
         data.msg = msg;
         this._comm.then(
@@ -113,7 +108,7 @@ export class Ctxt extends BaseCtxt {
 
     // Helper function for debug logging.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    dbglog(...args: any[]) {
+    dbglog(...args: any[]): void {
         if (this._log_area) {
             const s = args.map(
                 e => ((typeof(e) == 'object') ? JSON.stringify(e) : e)

@@ -27,7 +27,7 @@ function apply_over_children(
 // [['width', '50px'], ['height', '30px']].
 //
 // Will probably not work for generic cases.
-function parsePseudoCSS(s: string): [string, string][] {
+function parse_pseudo_css(s: string): [string, string][] {
     let keyvals: [string, string][] = [];
 
     for (let kv of s.split(';')) {
@@ -54,7 +54,7 @@ export function apply_css_tree(
     elem: HTMLElement, settings: [string, string][]
 ): void {
     for (let [selector, css] of settings) {
-        let kv = parsePseudoCSS(css);
+        let kv = parse_pseudo_css(css);
         apply_over_children(elem, selector, (child) => {
             for (let [k, v] of kv) child.style.setProperty(k, v);
         });

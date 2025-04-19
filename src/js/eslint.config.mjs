@@ -25,11 +25,16 @@ export default [
   {
     files: ["src/**/*.ts"],
     rules: {
-      "@typescript-eslint/explicit-function-return-type": ["error"],
+      "@typescript-eslint/explicit-function-return-type": [
+        "error",
+        {
+          allowExpressions: true,
+        }
+      ],
       "@typescript-eslint/naming-convention": [
         "warn",
         {
-          selector: "memberLike",
+          selector: ["parameter", "parameterProperty"],
           modifiers: ["private"],
           format: null,
           leadingUnderscore: "require",
