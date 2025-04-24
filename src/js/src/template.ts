@@ -1,6 +1,6 @@
 // The HTML template.
 
-let is_debug = (ctxt_id: string) => ctxt_id.endsWith("-dbg");
+let is_debug = (ctxt_id: string): boolean => ctxt_id.endsWith("-dbg");
 
 // Current setup:
 //  - div .croquis_nbext : outermost container
@@ -39,7 +39,7 @@ let is_debug = (ctxt_id: string) => ctxt_id.endsWith("-dbg");
 //    - div .cr_dbglog : debug logs --> CtxtImple.log_area
 //
 // See also display.py for HTML structure.
-export function apply_template(node: HTMLElement, ctxt_id: string) {
+export function apply_template(node: HTMLElement, ctxt_id: string): void {
     if (!/^[a-zA-Z0-9-]+$/.test(ctxt_id)) {
         console.log(`ctxt_id contains bad characters: [${ctxt_id}]`);
         throw new Error(`ctxt_id contains bad characters: [${ctxt_id}]`);

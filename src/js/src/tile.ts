@@ -51,7 +51,7 @@ export class Tile {
         }
     }
 
-    is_hover() {
+    is_hover(): boolean {
         return this.item_id != null;
     }
 

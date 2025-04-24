@@ -11,7 +11,7 @@ export enum HighlightType {
 }
 
 // TODO: Any way to generate a better assert message?
-export function assert(x: boolean, msg: string | null = null) {
+export function assert(x: boolean, msg: string | null = null): void {
     if (!x) {
         throw (msg) ? msg : "Should not happen!";
     }
@@ -26,7 +26,7 @@ export function sqr(x: number): number { return x * x; }
 // Current time as string HH:MM:SS.mmm, for debug logging.
 export function get_timestamp_str(): string {
     let T = new Date();
-    let fmt = (x: number, sz: number) => x.toString().padStart(sz, "0");
+    let fmt = (x: number, sz: number): string => x.toString().padStart(sz, "0");
     return fmt(T.getHours(), 2) + ':' + fmt(T.getMinutes(), 2) + ':' +
            fmt(T.getSeconds(), 2) + '.' + fmt(T.getMilliseconds(), 3);
 }
@@ -34,8 +34,12 @@ export function get_timestamp_str(): string {
 // Helper function to hide/unhide stuff by changing "display" attribute.
 // (We assume that CSS did not set "display: none": in that case unhide() will
 // not work.)
-export function hide(elem: HTMLElement) { elem.style.display = "none"; }
-export function unhide(elem: HTMLElement) { elem.style.display = ""; }
+export function hide(elem: HTMLElement): void { elem.style.display = "none"; }
+export function unhide(elem: HTMLElement): void { elem.style.display = ""; }
+
+export function get_child<T = HTMLElement>(parent: HTMLElement, selector: string): T {
+    return parent.querySelector(selector) as T;
+}
 
 // Utility class for managing a popup box that closes itself when the user
 // clicks somewhere else.

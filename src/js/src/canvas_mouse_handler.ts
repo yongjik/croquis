@@ -4,7 +4,7 @@ import type { TileHandler} from './tile_handler';
 import { Ctxt } from './ctxt';
 import { EventReplayer, ReplayStatus } from './event_replayer';
 import { AnyJson } from './types';
-import { assert, sqr } from './util';
+import { assert, get_child, sqr } from './util';
 
 const MOUSE_STOP_THRESHOLD_MSEC = 30.0;
 const MIN_SELECT_AREA_DIAG = 5;  // pixels
@@ -29,10 +29,9 @@ export class CanvasMouseHandler {
         private _replayer: EventReplayer,
     ) {
         const root: HTMLElement = ctxt.root_node;
-        this._canvas = root.querySelector(".cr_canvas") as HTMLElement;
-        this._zoom_radio_btn =
-            root.querySelector(".cr_zoom") as HTMLInputElement;
-        this._select_area = root.querySelector('.cr_select_area')!;
+        this._canvas = get_child(root, ".cr_canvas");
+        this._zoom_radio_btn = get_child<HTMLInputElement>(root, ".cr_zoom");
+        this._select_area = get_child(root, ".cr_select_area");
 
         this.reset();
 

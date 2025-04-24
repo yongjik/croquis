@@ -5,7 +5,7 @@ import type { TileHandler} from './tile_handler';
 import { Ctxt } from './ctxt';
 import { TileSet } from './tile_set';
 import { AnyJson } from './types';
-import { assertFalse, INFLIGHT_REQ_EXPIRE_MSEC, sqr } from './util';
+import { assertFalse, get_child, INFLIGHT_REQ_EXPIRE_MSEC, sqr } from './util';
 
 enum WhichAxis {
     X = "x",
@@ -93,9 +93,9 @@ export class AxisHandler {
         private _replayer: EventReplayer,
     ) {
         const root: HTMLElement = _ctxt.root_node;
-        this._x_axis = root.querySelector('.cr_x_axis')! as HTMLDivElement;
-        this._y_axis = root.querySelector('.cr_y_axis')! as HTMLDivElement;
-        this._grid = root.querySelector('.cr_grid')! as HTMLDivElement;
+        this._x_axis = get_child<HTMLDivElement>(root, ".cr_x_axis");
+        this._y_axis = get_child<HTMLDivElement>(root, ".cr_y_axis");
+        this._grid = get_child<HTMLDivElement>(root, ".cr_grid");
     }
 
     // Remove all known ticks and re-create them, following new information sent

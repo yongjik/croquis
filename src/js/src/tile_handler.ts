@@ -11,6 +11,7 @@ import { Tile } from './tile';
 import { CanvasResetMode, TileSet } from './tile_set';
 import { AnyJson, UNKNOWN } from './types';
 import {
+    get_child,
     HighlightType,
     INFLIGHT_REQ_EXPIRE_MSEC,
     ITEM_ID_SENTINEL,
@@ -20,8 +21,6 @@ import {
     unhide,
     ZOOM_FACTOR,
 } from './util';
-
-// XXX add ": void" to void functions?
 
 // Axis area dimensions.
 const AXIS_WIDTH = 2;  // pixels
@@ -103,7 +102,7 @@ class NearestPts {
     // Everything except for pt_x/pt_y is part of the key - we need so much
     // information because the "nearest point" depends on what's currently
     // visible on the canvas.
-    insert(msg_dict: AnyJson) {
+    insert(msg_dict: AnyJson): void {
         const keys = [
             msg_dict.config.config_id as number,
             msg_dict.config.zoom_level as number,
@@ -128,7 +127,7 @@ class NearestPts {
         x_offset: number, y_offset: number,
         mouse_x: number, mouse_y: number,
         item_id: number,
-    ) {
+    ): PtData | null {
         const key = [
             config_id, zoom_level, x_offset, y_offset, mouse_x, mouse_y, item_id
         ].map(Math.round).join(':');
@@ -142,10 +141,7 @@ export class TileHandler {
     constructor(ctxt: Ctxt) {
         // Shorthand.
         const root: HTMLElement = ctxt.root_node;
-        const parent_elem =
-            ctxt.root_node.querySelector(".cr_main1") as HTMLElement;
-        let qs = (selector: string) =>
-            parent_elem.querySelector(selector) as HTMLElement;
+        const parent_elem = get_child(root, ".cr_main1");
 
         // Build the HTML.
         // TODO: Currently we build the entire innard of div.cr_main1 here.
@@ -216,7 +212,7 @@ export class TileHandler {
                             left: 0px; right: 0px;`],
         ]);
 
-        apply_flex(qs('.cr_canvas_plus_x_axis'), 'column', [
+        apply_flex(get_child(root, '.cr_canvas_plus_x_axis'), 'column', [
             ['.cr_canvas', '1 0 auto'],
             ['.cr_x_axis', `0 0 ${X_AXIS_AREA_HEIGHT}px`],
         ]);
@@ -261,7 +257,7 @@ export class TileHandler {
         this._tile_replay_buf = [];
 
         // Initialize replay handler for debugging.
-        let btns_div = root.querySelector("cr_dbg_btns") as HTMLElement;
+        let btns_div = get_child(root, "cr_dbg_btns");
         this._replayer = new EventReplayer(btns_div, {
             reset: () => {
                 this.tile_set.set_highlight(null, null);
@@ -285,10 +281,10 @@ export class TileHandler {
 
         this._ctxt = ctxt;
 
-        this.status_bar = new StatusBar(qs(".cr_statusbar"));
+        this.status_bar = new StatusBar(get_child(root, ".cr_statusbar"));
 
         // Set up the tile set and resize observer.
-        this._canvas = parent_elem.querySelector(".cr_canvas") as HTMLElement;
+        this._canvas = get_child(root, ".cr_canvas");
         this.tile_set = new TileSet(ctxt, this._canvas);
         this._resize_observer = new ResizeObserver(() => {
             // The first time, it will run in "reset" mode because we don't have
@@ -298,26 +294,25 @@ export class TileHandler {
         this._resize_observer.observe(this._canvas);
 
         this.axis_handler = new AxisHandler(ctxt, this, this._replayer);
-        this._fg = this._canvas.querySelector('.cr_foreground') as HTMLElement;
+        this._fg = get_child(root, ".cr_foreground");
 
         this._mouse_handler =
             new CanvasMouseHandler(ctxt, this, this._replayer);
-        this._tooltip = qs('.cr_tooltip');
+        this._tooltip = get_child(root, '.cr_tooltip');
         this.nearest_pts = new NearestPts();
 
         // TODO: Support replay?
-        this._searchbox = qs('.cr_searchbox input') as HTMLInputElement;
+        this._searchbox =
+            get_child<HTMLInputElement>(root, ".cr_searchbox input");
         this._searchbox.addEventListener(
             'input', (ev) => this.search_handler(ev));
 
-        this._search_result_area = qs('.cr_search_result');
+        this._search_result_area = get_child(root, '.cr_search_result');
 
-        let ctrl_elem = root.querySelector(".cr_ctrl_panel") as HTMLElement;
-        let qs_ctrl = (selector: string) => ctrl_elem.querySelector(selector);
-        qs_ctrl('.cr_home_btn')!.addEventListener('click', (_ev) => {
+        get_child(root, '.cr_home_btn')!.addEventListener('click', (_ev) => {
             this.tile_set.resize_canvas(CanvasResetMode.RESET);
         });
-        qs_ctrl('.cr_zoom_in_btn')!.addEventListener('click', (_ev) => {
+        get_child(root, '.cr_zoom_in_btn')!.addEventListener('click', (_ev) => {
             this.tile_set.zoom_level++;
             this.tile_set.x_offset *= ZOOM_FACTOR;
             this.tile_set.y_offset *= ZOOM_FACTOR;
@@ -325,7 +320,7 @@ export class TileHandler {
             this.axis_handler.update_location(true);
             this.request_new_tiles();
         });
-        qs_ctrl('.cr_zoom_out_btn')!.addEventListener('click', (_ev) => {
+        get_child(root, '.cr_zoom_out_btn')!.addEventListener('click', (_ev) => {
             this.tile_set.zoom_level--;
             this.tile_set.x_offset /= ZOOM_FACTOR;
             this.tile_set.y_offset /= ZOOM_FACTOR;
@@ -335,15 +330,16 @@ export class TileHandler {
         });
 
         (
-            this._btn_regex = qs('.cr_regex') as HTMLInputElement
+            this._btn_regex = get_child<HTMLInputElement>(root, '.cr_regex')
         ).addEventListener('change', (ev) => this.search_handler(ev));
         (
-            this._btn_autoselect = qs('.cr_autoselect') as HTMLInputElement
+            this._btn_autoselect =
+                get_child<HTMLInputElement>(root, '.cr_autoselect')
         ).addEventListener('change', (ev) => this.autoselect_handler(ev));
 
-        this._btn_popup = new PopupBox(qs('.cr_btn_popup'));
+        this._btn_popup = new PopupBox(get_child(root, '.cr_btn_popup'));
 
-        qs('.cr_more')!.addEventListener('click', (_ev) => {
+        get_child(root, '.cr_more')!.addEventListener('click', (_ev) => {
             if (this._searchbox.value != '') {
                 this._btn_select_matching.textContent =
                     'Select all matching ' + this._searchbox.value;
@@ -360,34 +356,34 @@ export class TileHandler {
             this._btn_popup.show();
         });
 
-        qs('.cr_select_all')!.addEventListener(
+        get_child(root, '.cr_select_all')!.addEventListener(
             'click', (ev) => this.select_btn_handler(ev, 'select_all'));
-        qs('.cr_deselect_all')!.addEventListener(
+        get_child(root, '.cr_deselect_all')!.addEventListener(
             'click', (ev) => this.select_btn_handler(ev, 'deselect_all'));
 
         (
-            this._btn_select_matching = qs('.cr_select_matching')
+            this._btn_select_matching = get_child(root, '.cr_select_matching')
         ).addEventListener(
             'click', (ev) => this.select_btn_handler(ev, 'select_matching'));
 
         (
-            this._btn_deselect_matching = qs('.cr_deselect_matching')
+            this._btn_deselect_matching = get_child(root, '.cr_deselect_matching')
         ).addEventListener(
             'click', (ev) => this.select_btn_handler(ev, 'deselect_matching'));
 
-        this._search_stat_area = qs('.cr_search_stat');
+        this._search_stat_area = get_child(root, '.cr_search_stat');
 
         this.reset_state();
         this.search_handler(null);
     }
 
-    cleanup() {
+    cleanup(): void {
         this._resize_observer.disconnect();
     }
 
     // Utility function for initializing/resetting internal state.
     // (Used for replaying.)
-    reset_state() {
+    reset_state(): void {
         this._update_T = null;  // Last time highlight was changed.
         this._hide_cb = null;  // Set if we want to hide the foreground.
         this._highlight_change_time = null;
@@ -406,7 +402,7 @@ export class TileHandler {
     // initially, (2) after window resize, or (3) after zoom request.
     //
     // TODO: Allow user to switch the grid on/off.
-    register_canvas_config(msg_dict: AnyJson) {
+    register_canvas_config(msg_dict: AnyJson): void {
         // TODO: Event replay is not written yet.
         // this._replayer.record_event('canvas', msg_dict);
 
@@ -420,7 +416,7 @@ export class TileHandler {
 
     // Called by Ctxt when we receive a new tile from BE: we add the tile to
     // either the visible layer or `tile_cache`.
-    register_tile(tile: Tile, seqs: number[]) {
+    register_tile(tile: Tile, seqs: number[]): void {
         // Update sequence #.
         for (let seq of seqs) {
             this._inflight_reqs.delete(seq);
@@ -439,7 +435,7 @@ export class TileHandler {
     }
 
     // Triggered by register_tile() above.
-    register_tile_cb() {
+    register_tile_cb(): void {
         let tiles = this._received_tiles;
         this._received_tiles = [];
 
@@ -457,7 +453,7 @@ export class TileHandler {
     // `_tile_replay_cb` to handle the received tile.
     tile_replay_handler(
         resolve: () => void, keys: string[], idx: number
-    ) {
+    ): void {
         if (idx == keys.length) {
             this.register_tile_internal(this._tile_replay_buf);
             this._tile_replay_cb = null;
@@ -497,7 +493,7 @@ export class TileHandler {
         });
     }
 
-    register_tile_internal(tiles: Tile[]) {
+    register_tile_internal(tiles: Tile[]): void {
         let has_hover = false;
         for (let tile of tiles) {
             this._replayer.log(`Adding tile: ${tile.key}`);
@@ -547,7 +543,7 @@ export class TileHandler {
         }
     }
 
-    handle_panning(x_offset: number, y_offset: number) {
+    handle_panning(x_offset: number, y_offset: number): void {
         this.tile_set.pan(x_offset, y_offset);
         this.request_new_tiles();
 
@@ -557,7 +553,7 @@ export class TileHandler {
 
     // The mouse cursor is not moving: ask highlight tiles for exactly under the
     // cursor.
-    handle_mouse_stop(x: number, y: number) {
+    handle_mouse_stop(x: number, y: number): void {
         this._replayer.log(`handle_mouse_stop: ${x} ${y}`);
         let item_id = this.tile_set.get_highlight_id(x, y);
         if (item_id === UNKNOWN) return;
@@ -581,7 +577,7 @@ export class TileHandler {
     // On Linux, seems like mousemove callback is called roughly every ~10ms
     // on Chrome and ~15ms on Firefox.  So it should be OK to just update
     // history every time we get this callback.
-    update_mouse_history(x: number, y: number) {
+    update_mouse_history(x: number, y: number): void {
         let mouse_hist = this._mouse_hist;
         const rel_T: number = this._replayer.rel_time as number;
         const last_T: number =
@@ -667,7 +663,7 @@ export class TileHandler {
 
     // Traverse a straight line between (x0, y0) and (x1, y1), check the
     // hovermap data, and add candidate waypoints.
-    draw_prediction_line(x0: number, y0: number, x1: number, y1: number) {
+    draw_prediction_line(x0: number, y0: number, x1: number, y1: number): void {
         this._replayer.log(
             "draw_prediction_line() called: " +
             `x0=${x0.toFixed(2)} y0=${y0.toFixed(2)} ` +
@@ -679,7 +675,7 @@ export class TileHandler {
         let item_cnt = 0;  // Number of differently highlighted regions.
 
         // Visit pixel (x, y) - return `true` if we want to continue.
-        let visit = (x: number, y: number) => {
+        let visit = (x: number, y: number): boolean => {
             x = Math.round(x); y = Math.round(y);
             const item_id = this.tile_set.get_highlight_id(x, y);
 
@@ -785,7 +781,7 @@ export class TileHandler {
     // there's obviously no meaningful coordinate inside the search area.
     //
     // See messages.txt for `tile_req` message format.
-    create_highlight_req(waypoints: Waypoint[]) {
+    create_highlight_req(waypoints: Waypoint[]): AnyJson | null {
         this._replayer.log('create_highlight_req: currently has ' +
                           `${this._inflight_reqs.size} in-flight requests.`);
         this.expire_old_requests();
@@ -816,7 +812,7 @@ export class TileHandler {
         let throttled = false;
         let fill_tile_reqs = (
             tile_req_buf: string[], item_id: number, is_prio: boolean
-        ) => {
+        ): void => {
             for (let [row, col] of all_coords) {
                 const key = this.tile_set.tile_key(row, col, item_id);
                 if (this.tile_set.has_tile(key)) {
@@ -879,7 +875,7 @@ export class TileHandler {
     // Find the best current matching item for highlight (it may not be the
     // one right under the mouse cursor, if the data is not available yet).
     // Then update highlight if necessary.
-    recompute_highlight() {
+    recompute_highlight(): void {
         const [x, y] = [
             this._mouse_handler.mouse_x as number,
             this._mouse_handler.mouse_y as number,
@@ -1022,7 +1018,7 @@ export class TileHandler {
         }
     }
 
-    hide_tooltip() {
+    hide_tooltip(): void {
         this._tooltip.style.visibility = 'hidden';
         this.axis_handler.update_crosshair(null, null);
     }
@@ -1031,7 +1027,7 @@ export class TileHandler {
     //
     // `trigger_type` indicates how this highlight was triggered: either
     // VIA_CANVAS or VIA_SEARCH.
-    set_highlight(item_id: number, trigger_type: HighlightType) {
+    set_highlight(item_id: number, trigger_type: HighlightType): void {
         this._replayer.log(`>>> Setting highlight to #${item_id} ...`);
         this.tile_set.set_highlight(item_id, trigger_type);
 
@@ -1056,13 +1052,13 @@ export class TileHandler {
     // Turn off the current highlighted item.
     // To avoid flickering, we actually set up a series of callbacks that may
     // run delayed - see set_hide_cb() below.
-    clear_highlight() {
+    clear_highlight(): void {
         this._replayer.log('clear_highlight() called.');
         this.set_hide_cb('clear2', () => this.clear_highlight2(),
                          MIN_HIGHLIGHT_DURATION_MSEC);
     }
 
-    clear_highlight2() {
+    clear_highlight2(): void {
         this._replayer.log('>>> Clearing highlight ...');
         this.tile_set.set_highlight(null, null);
         if (this._highlighted_label != null) {
@@ -1074,7 +1070,7 @@ export class TileHandler {
                          MIN_FG_VISIBLE_MSEC);
     }
 
-    clear_highlight3() {
+    clear_highlight3(): void {
         this._replayer.log('>>> Hiding the foreground layer ...');
         this._fg.style.visibility = 'hidden';
     }
@@ -1085,7 +1081,7 @@ export class TileHandler {
         event_type: keyof EventCallbackMap,
         cb: () => void,
         threshold: number,
-    ) {
+    ): void {
         const rel_T = this._replayer.rel_time as number;
         const elapsed = rel_T - this._update_T!;
         this._replayer.log(
@@ -1113,7 +1109,7 @@ export class TileHandler {
         }
     }
 
-    autoselect_handler(_ev: Event) {
+    autoselect_handler(_ev: Event): void {
         if (this._btn_autoselect.checked) {
             // Select all currently shown labels.
             for (let label of this._labels) {
@@ -1134,7 +1130,7 @@ export class TileHandler {
 
     // If (ev == null) then we're being called manually by Ctxt: then we don't
     // need to update version because this should be the first call.
-    search_handler(ev: Event | null) {
+    search_handler(ev: Event | null): void {
         if (ev != null && this._btn_autoselect.checked) {
             this._ctxt.send('search', {
                 version: this.tile_set.new_sm_version(),
@@ -1153,7 +1149,7 @@ export class TileHandler {
 
     // `command` is one of: select_all, deselect_all, select_matching,
     //                      deselect_matching.
-    select_btn_handler(ev: Event, command: string) {
+    select_btn_handler(ev: Event, command: string): void {
         this._btn_autoselect.checked = false;
         this._btn_popup.hide();
 
@@ -1183,7 +1179,7 @@ export class TileHandler {
     //
     // TODO: Refactor into a separate class?  TileHandler is getting longer and
     // longer ...
-    update_search_result(msg_dict: AnyJson) {
+    update_search_result(msg_dict: AnyJson): void {
         let old_labels = this._labels;
         this._labels = [];
         let new_labels = msg_dict.labels;
@@ -1274,7 +1270,7 @@ export class TileHandler {
     //
     // Update highlight if any tile is available; otherwise turn it off.
     // Also send requests for highlight tiles if necessary.
-    label_mouse_handler(label: Label, ev: Event) {
+    label_mouse_handler(label: Label, ev: Event): void {
         this._replayer.log(
             `label_mouse_handler called: item_id=${label.item_id} ` +
             `event=${ev.type} current highlighted=${label.highlighted} ` +
@@ -1304,7 +1300,7 @@ export class TileHandler {
 
     // Request new tiles: called after selection update and panning.
     // TODO: Handle replay?
-    request_new_tiles() {
+    request_new_tiles(): void {
         const req = this.create_tile_req();
         if (req != null) {
             this._replayer.log('Sending new tile_req:', req);
@@ -1320,7 +1316,7 @@ export class TileHandler {
     // over the MAX_INFLIGHT_REQUESTS limit.
     //
     // TODO: Refactor and merge with create_highlight_req?
-    create_tile_req() {
+    create_tile_req(): AnyJson | null {
         this._tile_update_stalled = false;
 
         let sm_version = this.tile_set.sm_version;
@@ -1360,7 +1356,7 @@ export class TileHandler {
     }
 
     // Forget in-flight requests that are too old.
-    expire_old_requests() {
+    expire_old_requests(): void {
         let deadline = Date.now() - INFLIGHT_REQ_EXPIRE_MSEC;
         for (let [seq_no, timestamp] of this._inflight_reqs) {
             if (timestamp < deadline) {

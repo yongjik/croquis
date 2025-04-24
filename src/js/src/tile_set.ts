@@ -5,6 +5,7 @@ import { Tile, tile_key } from './tile';
 import { AnyJson, UNKNOWN, Unknown } from './types';
 import {
     assert,
+    get_child,
     HighlightType,
     LRUCache,
     TILE_SIZE
@@ -25,22 +26,22 @@ interface ConfigReq {
 
 export class TileSet {
     constructor(
-        private ctxt: Ctxt,
-        private canvas: HTMLElement
+        private _ctxt: Ctxt,
+        private _canvas: HTMLElement
     ) {
-        this._ctxt_id = ctxt.ctxt_id;
-        this.inner_div = this.canvas.querySelector('.cr_inner') as HTMLElement;
-        this.fg = this.canvas.querySelector('.cr_foreground') as HTMLElement;
+        this._ctxt_id = _ctxt.ctxt_id;
+        this.inner_div = get_child(this._canvas, ".cr_inner");
+        this.fg = get_child(this._canvas, ".cr_foreground");
     }
 
     // TODO: Too much duplicate code between resize_canvas() and
     //       send_zoom_req() !!
 
     // Send the `canvas_config_req` message when the canvas was resized.
-    resize_canvas(how: CanvasResetMode) {
+    resize_canvas(how: CanvasResetMode): void {
         const is_resize = (how == CanvasResetMode.RESIZE);
-        const w = Math.round(this.canvas.clientWidth);
-        const h = Math.round(this.canvas.clientHeight);
+        const w = Math.round(this._canvas.clientWidth);
+        const h = Math.round(this._canvas.clientHeight);
 
         if (is_resize &&
             w == this.last_config_req.width &&
@@ -61,7 +62,7 @@ export class TileSet {
         };
 
         if (is_resize && this.has_valid_config()) {
-            this.ctxt.send('canvas_config_req', {
+            this._ctxt.send('canvas_config_req', {
                 config_id: new_config_id,
                 w: w,
                 h: h,
@@ -73,7 +74,7 @@ export class TileSet {
             if (is_resize) {
                 console.log('No valid config yet, asking for reset ...');
             }
-            this.ctxt.send('canvas_config_req', {
+            this._ctxt.send('canvas_config_req', {
                 config_id: new_config_id,
                 w: w,
                 h: h,
@@ -83,15 +84,17 @@ export class TileSet {
     }
 
     // Send zoom request.
-    send_zoom_req(zoom: { px0: number, py0: number, px1: number, py1: number}) {
+    send_zoom_req(
+        zoom: { px0: number, py0: number, px1: number, py1: number}
+    ): void {
         if (!this.has_valid_config()) {
             console.log("Cannot resize: doesn't have a valid config yet!");
             return;
         }
 
         const new_config_id = this.last_config_req.config_id + 1;
-        const w = Math.round(this.canvas.clientWidth);
-        const h = Math.round(this.canvas.clientHeight);
+        const w = Math.round(this._canvas.clientWidth);
+        const h = Math.round(this._canvas.clientHeight);
         console.log(`Zoom canvas ${this._ctxt_id} ` +
                     `config_id=${new_config_id} w=${w} h=${h}`);
 
@@ -101,7 +104,7 @@ export class TileSet {
             height: h,
         };
 
-        this.ctxt.send('canvas_config_req', {
+        this._ctxt.send('canvas_config_req', {
             config_id: new_config_id,
             w: w,
             h: h,
@@ -112,13 +115,13 @@ export class TileSet {
     }
 
     // Check if we have a valid canvas config.
-    has_valid_config() {
+    has_valid_config(): boolean {
         return this.x0 != null;
     }
 
     // Convert the current shown canvas config to CanvasConfigSubMessage (see
     // messages.txt).
-    current_canvas_config() {
+    current_canvas_config(): AnyJson {
         return {
             config_id: this.config_id,
             w: this.width,
@@ -135,7 +138,7 @@ export class TileSet {
 
     // Handle the `canvas_config` message returned by BE.
     // Return true if we change the canvas config.
-    add_config(msg: AnyJson) {
+    add_config(msg: AnyJson): boolean {
         const config = msg.config;
         if (this.config_id >= msg.config_id) {
             console.log(`canvas_config message contains stale config ID ` +
@@ -163,17 +166,17 @@ export class TileSet {
     }
 
     // Return true if we have this tile.
-    has_tile(key: string) {
+    has_tile(key: string): boolean {
         return this.visible_tiles.has(key) || this.tile_cache.has(key);
     }
 
-    get_tile(key: string) {
+    get_tile(key: string): Tile | null {
         return this.visible_tiles.get(key) || this.tile_cache.get(key) || null;
     }
 
     // Re-compute which tiles should be visible after config was updated (e.g.,
     // after zoom).
-    refresh() {
+    refresh(): void {
         for (let tile of this.visible_tiles.values()) {
             // NOTE: This removes `tile` from `visible_tiles` if it's no longer
             // visible.
@@ -189,7 +192,7 @@ export class TileSet {
     }
 
     // Add a new tile to TileSet.
-    add_tile(tile: Tile) {
+    add_tile(tile: Tile): void {
         // If the tile is not visible, simply add to the tile cache.
         if (!this.is_visible(tile)) {
             this.tile_cache.insert(tile.key, tile);
@@ -211,7 +214,7 @@ export class TileSet {
 
     // Enable highlight layer with the given item.  If `item_id == null`,
     // turn off the highlight layer.
-    set_highlight(item_id: number | null, trigger_type: HighlightType | null) {
+    set_highlight(item_id: number | null, trigger_type: HighlightType | null): void {
         this.highlight_item_id = item_id;
         this.highlight_trigger = trigger_type;
 
@@ -248,7 +251,7 @@ export class TileSet {
 
     // Update panning: update the position of all shown tiles, and optionally
     // show cached tiles as necessary.
-    pan(new_x_offset: number, new_y_offset: number) {
+    pan(new_x_offset: number, new_y_offset: number): void {
         this.x_offset = new_x_offset;
         this.y_offset = new_y_offset;
         for (let tile of this.visible_tiles.values()) {
@@ -273,7 +276,7 @@ export class TileSet {
     // inside this.visible_tiles when called.
     //
     // TODO: This doesn't seem to be much of an optimization ... remove?
-    show_tile(tile: Tile, existing: Tile | null = null) {
+    show_tile(tile: Tile, existing: Tile | null = null): void {
         this.update_tile_position(tile);
         let target = tile.is_hover() ? this.fg : this.inner_div;
 
@@ -291,14 +294,14 @@ export class TileSet {
         this.visible_tiles.set(tile.key, tile);
     }
 
-    update_tile_position(tile: Tile) {
+    update_tile_position(tile: Tile): void {
         tile.elem.style.top = (tile.row * TILE_SIZE + this.y_offset) + 'px';
         tile.elem.style.left = (tile.col * TILE_SIZE + this.x_offset) + 'px';
     }
 
     // Hide a tile that is currently in the visible layer, and add it back
     // to the tile cache.
-    hide_tile(tile: Tile) {
+    hide_tile(tile: Tile): void {
         this.visible_tiles.delete(tile.key);
         tile.elem.remove();  // Remove from display.
         this.tile_cache.insert(tile.key, tile);
@@ -358,7 +361,7 @@ export class TileSet {
     }
 
     // Get a list of all tile coordinates covering the canvas.
-    get_all_tile_coords() {
+    get_all_tile_coords(): [number, number][] {
         if (this.width == null || this.height == null) {
             console.log(
                 'Error: create_highlight_req called before ' +
@@ -366,7 +369,7 @@ export class TileSet {
             return [];
         }
 
-        let retval = []
+        let retval: [number, number][] = []
         const r0 = Math.floor(-this.y_offset / TILE_SIZE);
         const c0 = Math.floor(-this.x_offset / TILE_SIZE);
         const r1 = Math.ceil((this.height - this.y_offset) / TILE_SIZE) - 1;
@@ -386,7 +389,7 @@ export class TileSet {
     }
 
     // Increment and return a new sm_version.
-    new_sm_version() {
+    new_sm_version(): number {
         return (this.sm_version += 2);
     }
 

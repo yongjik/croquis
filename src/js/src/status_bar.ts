@@ -16,7 +16,7 @@ export class StatusBar {
         }, PROGRESSBAR_TIMEOUT);
     }
 
-    on_comm_error(_err: string) {
+    on_comm_error(_err: string): void {
         this.clear_cb();
         this._status = GraphStatus.ERROR;
         this._bar.innerHTML =
@@ -24,13 +24,13 @@ export class StatusBar {
         this._bar.style.visibility = "visible";
     }
 
-    on_comm_ok() {
+    on_comm_ok(): void {
         this.clear_cb();
         this._status = GraphStatus.OK;
         this._bar.style.visibility = "hidden";
     }
 
-    private clear_cb() {
+    private clear_cb(): void {
         if (this._show_progressbar_cb != null) {
             window.clearTimeout(this._show_progressbar_cb);
             this._show_progressbar_cb = null;

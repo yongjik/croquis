@@ -34,7 +34,7 @@ export class Label {
 
         this.elem.appendChild(document.createTextNode(this.label));
 
-        let cb2 = (ev: Event) => cb!(this, ev);
+        let cb2 = (ev: Event): void => cb!(this, ev);
         this.elem.addEventListener('mouseenter', cb2);
         this.elem.addEventListener('mousemove', cb2);
         this.elem.addEventListener('mouseleave', cb2);
@@ -98,7 +98,6 @@ export class Label {
         return svg;
     }
 
-    // XXX item_id: number;
     elem: HTMLElement | null = null;
     checkbox: HTMLInputElement | null = null;
     highlighted: boolean = false;
