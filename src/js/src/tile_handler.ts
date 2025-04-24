@@ -54,30 +54,23 @@ const TOOLTIP_OFFSET_Y = 10;  // pixels
 // WARNING: takes a lot of resource - should be off when debugging performance!
 const SHOW_WAYPOINT_COMET = false;
 
-class MouseHistItem {
-    constructor(
-        public t: number,
-        public x: number,
-        public y: number,
-    ) { }
+interface MouseHistItem {
+    t: number;
+    x: number;
+    y: number;
 }
 
-// XXX We need comments for this!  Also is this correct?
-class Waypoint {
-    constructor(
-        public x: number | null,
-        public y: number | null,
-        public item_id: number | null,
-    ) { }
+interface Waypoint {
+    x: number | null;
+    y: number | null;
+    item_id: number | null;
 }
 
-class PtData {
-    constructor(
-        public data_x: number,
-        public data_y: number,
-        public screen_x: number,
-        public screen_y: number,
-    ) { }
+interface PtData {
+    data_x: number;
+    data_y: number;
+    screen_x: number;
+    screen_y: number;
 }
 
 // Coordinates of nearest points to show inside the tooltip.
@@ -112,12 +105,12 @@ class NearestPts {
             msg_dict.mouse_y as number,
             msg_dict.item_id as number,
         ];
-        const data = new PtData(
-            msg_dict.data_x,
-            msg_dict.data_y,
-            msg_dict.screen_x,
-            msg_dict.screen_y,
-        );
+        const data: PtData = {
+            data_x: msg_dict.data_x,
+            data_y: msg_dict.data_y,
+            screen_x: msg_dict.screen_x,
+            screen_y: msg_dict.screen_y,
+        };
         this._cache.insert(keys.map(Math.round).join(':'), data);
     }
 
@@ -559,7 +552,7 @@ export class TileHandler {
         if (item_id === UNKNOWN) return;
         this._replayer.log('current item_id = ', item_id);
 
-        let buf = [new Waypoint(x, y, item_id)];
+        let buf: Waypoint[] = [{x, y, item_id}];
         const req = this.create_highlight_req(buf);
         if (req == null) return;
 
@@ -582,7 +575,7 @@ export class TileHandler {
         const rel_T: number = this._replayer.rel_time as number;
         const last_T: number =
             (mouse_hist.length) ? mouse_hist[mouse_hist.length - 1].t : 0;
-        const new_item = new MouseHistItem(rel_T, x, y);
+        const new_item: MouseHistItem = {t: rel_T, x, y};
 
         // If the callback is being called too frequently, just replace the
         // last known position and return.
@@ -682,7 +675,7 @@ export class TileHandler {
             if (item_id == UNKNOWN)
                 return false;  // We have missing data: bail out.
 
-            const item = new Waypoint(x, y, item_id);
+            const item: Waypoint = {x, y, item_id};
 
             // If this is a new `item_id`, then append to the buffer.
             if (buf.length == 0 || buf[buf.length - 1].item_id != item_id) {
@@ -1283,7 +1276,8 @@ export class TileHandler {
             // Send request for missing tiles, if any.
             // TODO: This duplicates the logic of draw_prediction_line().
             const req = this.create_highlight_req(
-                [new Waypoint(null, null, label.item_id)]);
+                [{x: null, y: null, item_id: label.item_id}]
+            );
             if (req != null) {
                 this._replayer.log('Sending highlight_req:', req);
 
