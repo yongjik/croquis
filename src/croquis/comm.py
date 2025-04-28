@@ -116,6 +116,11 @@ class CommManager(object):
             del self.handlers[canvas_id][msgtype]
             return
 
-        cb(canvas_id, msgtype, msg)
+        try:
+            cb(canvas_id, msgtype, msg)
+        except Exception as e:
+            logger.exception("Error in callback for canvas_id=%s, msgtype=%s",
+                             canvas_id, msgtype)
+            raise
 
 comm_manager = CommManager()
