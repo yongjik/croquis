@@ -46,10 +46,11 @@ class FigData(object):
 
         dist2 = (mouse_x - c.x_offset - px) ** 2 + \
                 (mouse_y - c.y_offset - py) ** 2
-        ipx = np.rint(px).astype(np.int) + c.x_offset
-        ipy = np.rint(py).astype(np.int) + c.y_offset
+        ipx = np.rint(px).astype(np.int32) + c.x_offset
+        ipy = np.rint(py).astype(np.int32) + c.y_offset
         in_canvas, = np.where(
             (0 <= ipx) & (ipx < c.w) & (0 <= ipy) & (ipy < c.h))
+
         if len(in_canvas) == 0: return None  # No data!
 
         best_idx = in_canvas[np.argmin(dist2[in_canvas])]
