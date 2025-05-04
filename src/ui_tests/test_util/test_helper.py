@@ -42,9 +42,9 @@ def run_jupyter_cell(
         # search for it.
 
         # Wait until we have some visible cell.
-        page.locator("div.jp-Cell").filter(visible=True).first.hover()
+        any_cell = page.locator("div.jp-Cell").filter(visible=True).first
+        any_cell.press("Control+F")
 
-        page.keyboard.press("Control+F")
         searchbox = page.locator('textarea[title="Find" i]')
         searchbox.press("Delete")
         searchbox.type(substr)
