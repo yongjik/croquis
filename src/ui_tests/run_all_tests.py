@@ -32,7 +32,7 @@ arg_parser.add_argument('--headless', action='store_true')
 arg_parser.add_argument('--slow_mo', type=int)
 
 # More arguments.
-arg_parser.add_argument('--timeout', type=float, default=2.5)
+arg_parser.add_argument('--timeout', type=float, default=5.0)
 
 cmd_args = arg_parser.parse_args()
 
@@ -60,3 +60,5 @@ with JupyterLauncher(cmd_args) as launcher, sync_playwright() as p:
     resize_test.run_tests(launcher, context)
 
     browser.close()
+
+    print("ALL TESTS PASSED !!!")

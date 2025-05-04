@@ -73,13 +73,15 @@ def test_zoom(launcher, context):
     page.mouse.up()
 
     def coord_cb():
-        xzero, _ = test_helper.get_center_coord1(
+        x_coord = test_helper.get_center_coord1(
             page, 'div.cr_x_axis div.cr_label >> text="0.0"')
-        _, yzero = test_helper.get_center_coord1(
+        y_coord = test_helper.get_center_coord1(
             page, 'div.cr_y_axis div.cr_label >> text="0.0"')
 
-        # print('coords = ', xzero, yzero)
-        return xzero, yzero
+        if (x_coord is None) or (y_coord is None): return None
+
+        # print('coords = ', x_coord[0], y_coord[1])
+        return x_coord[0], y_coord[1]
 
     # Now zoom at the origin, and verify that we have the tooltip.
     test_helper.verify_tooltip(page, cell, coord_cb,
