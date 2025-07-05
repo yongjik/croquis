@@ -3,10 +3,11 @@
 set -o errexit
 set -o pipefail
 
-mode=install
+mode=wheel
 build_type=Release
 compiler=clang++
 builder=ninja
+build_isolation=yes
 
 while true; do
     if [[ "$1" == "Debug" ]]; then
@@ -24,8 +25,14 @@ while true; do
     elif [[ "$1" == "ninja" ]]; then
         builder=ninja
         shift
+    elif [[ "$1" == "clean" ]]; then
+        mode=clean
+        shift
     elif [[ "$1" == "-e" ]]; then
         mode=editable
+        shift
+    elif [[ "$1" == "--no-build-isolation" ]]; then
+        build_isolation=no
         shift
     else
         break
@@ -43,12 +50,25 @@ build_js () {
     else
         npm install
     fi
-    npm run build
+    if [[ "$mode" == "clean" ]]; then
+        npm run clean
+    elif [[ "$mode" == "editable" ]]; then
+        npm run build
+    elif [[ "$mode" == "wheel" ]]; then
+        npm run build:prod
+    else
+        echo "Invalid mode $mode"
+        exit 1
+    fi
     popd
 }
 
 build_cxx () {
-    if [[ "$builder" == "make" ]]; then
+    if [[ "$mode" == "clean" ]]; then
+        rm -rf build.make/
+        rm -rf build.ninja/
+        rm -rf src/croquis/lib/_csrc*.so
+    elif [[ "$builder" == "make" ]]; then
         mkdir -p build.make
         pushd build.make
         cmake -G"Unix Makefiles" -DCMAKE_CXX_COMPILER=$cxx \
@@ -71,8 +91,18 @@ build_cxx () {
 }
 
 build_py () {
-    if [[ "$mode" == "editable" ]]; then
-        pip install --no-build-isolation -e .
+    if [[ "$mode" == "clean" ]]; then
+        rm -rf src/croquis/labextension
+        rm -rf src/croquis/lib/_csrc*
+    elif [[ "$mode" == "editable" ]]; then
+        if [[ "$build_isolation" == "yes" ]]; then
+            pip install -e .
+        else
+            build_scripts/check_version.py hatchling 1.27.0
+            build_scripts/check_version.py pybind11
+            build_scripts/check_version.py editables
+            pip install --no-build-isolation -e .
+        fi
         CROQUIS_UNITTEST=1 jupyter labextension develop . --overwrite
 
         # Update sourcemap so that breakpoints work on vscode.
@@ -81,9 +111,19 @@ build_py () {
             'webpack://croquis-js/' \
             src/js
     else
-        # TODO: what now?
-        print "Non-development not supported yet!"
-        exit 1
+        rm -rf dist/
+        hatch build -t wheel
+
+        set +o xtrace
+
+        if $(ls dist/*.whl >/dev/null 2>&1); then
+            echo "Wheel file generated as:" $(ls dist/*.whl)
+        else
+            echo "Cannot find wheel file !!!"
+            exit 1
+        fi
+
+        set -o xtrace
     fi
 }
 

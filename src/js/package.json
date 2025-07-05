@@ -20,21 +20,25 @@
         "eslint": "eslint . --cache"
     },
     "dependencies": {
-        "@jupyterlab/application": "^4.2.3",
-        "@jupyterlab/notebook": "^4.2.3",
-        "@jupyterlab/rendermime": "^4.2.3",
-        "@jupyterlab/rendermime-interfaces": "^3.10.3",
-        "@lumino/coreutils": "^2.1.2",
-        "@lumino/widgets": "^2.4.0"
+        "@jupyterlab/application": "^4.4.4",
+        "@jupyterlab/notebook": "^4.4.4",
+        "@jupyterlab/rendermime": "^4.4.4",
+        "@jupyterlab/rendermime-interfaces": "^3.12.4",
+        "@lumino/coreutils": "^2.2.1",
+        "@lumino/widgets": "^2.7.1"
     },
+    "NOTE": [
+        "As of Jun 2025, typescript 5.6+ triggers build error on vscode-jsonrpc; ",
+        "See: https://github.com/microsoft/vscode-languageserver-node/issues/1590"
+    ],
     "devDependencies": {
-        "@eslint/js": "^9.25.0",
-        "@jupyterlab/builder": "^4.2.3",
-        "eslint": "^8.57.1",
-        "globals": "^15.15.0",
-        "rimraf": "^5.0.1",
-        "typescript": "^5.8.2",
-        "typescript-eslint": "^8.30.1"
+        "@eslint/js": "^9.30.1",
+        "@jupyterlab/builder": "^4.4.4",
+        "eslint": "^9.30.1",
+        "globals": "^16.3.0",
+        "rimraf": "^6.0.1",
+        "typescript": "~5.5",
+        "typescript-eslint": "^8.35.1"
     },
     "jupyterlab": {
         "extension": true,
