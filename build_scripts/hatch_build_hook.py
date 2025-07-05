@@ -9,7 +9,7 @@ class CustomBuildHook(BuildHookInterface):
         super().__init__(*args, **kwargs)
 
     def initialize(self, version: str, build_data: dict) -> None:
-        build_data["pure_python"] = False
+        build_data.update(dict(pure_python=False, infer_tag=True))
         pat = "src/croquis/lib/_csrc.*.so"
         lib_files = glob.glob(pat)
         assert len(lib_files) == 1, \

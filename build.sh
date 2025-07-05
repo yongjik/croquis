@@ -81,7 +81,7 @@ build_cxx () {
         pushd build.ninja
         cmake -GNinja -DCMAKE_CXX_COMPILER=$cxx \
               -DCMAKE_BUILD_TYPE=$build_type \
-              ../src &&
+              ../src
         ninja -v "$@"
         popd
     else
