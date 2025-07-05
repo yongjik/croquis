@@ -11,5 +11,4 @@ test*.ipynb
 /build.*/
 /dist/
 /private/
-/src/croquis.egg-info
 /src/croquis/labextension/

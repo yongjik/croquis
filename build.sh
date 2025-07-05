@@ -106,7 +106,7 @@ build_py () {
         CROQUIS_UNITTEST=1 jupyter labextension develop . --overwrite
 
         # Update sourcemap so that breakpoints work on vscode.
-        python misc/fix_sourcemap.py \
+        python build_scripts/fix_sourcemap.py \
             src/croquis/labextension/static \
             'webpack://croquis-js/' \
             src/js

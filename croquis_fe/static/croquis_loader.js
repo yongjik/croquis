@@ -1,1 +1,0 @@
-../../src/js/croquis_loader.js
