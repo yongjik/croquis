@@ -46,13 +46,13 @@ silent: it's French, after all.)
 
 ## Requirements
 
-- 64-bit Linux/Mac OS running on x86 with
+- 64-bit Linux running on x86 with
   [AVX2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions#CPUs_with_AVX2)
   instruction set support.  (Intel: Haswell (2013) or later; AMD: Excavator
   (2015) or later.)
-  - Windows support is under work.
-  - Sorry, other architectures aren't supported yet.
-- Python 3.6 or later.
+  - I might add Mac OS (ARM, aka Apple Silicon) and Windows x86 support later...
+    if I get enough free time.  (Sorry, no concrete plan yet!)
+- Python 3.9 or later.
 - Jupyter Notebook.
 - A modern browser (if it can run Jupyter Notebook, it's probably fine).
 
@@ -88,12 +88,6 @@ It should generate a plot like this:
 
 For documentation, see the [tutorial](doc/tutorial.md) and the (very short)
 [reference](doc/reference.md).
-
-By the way, this library is of course open source (MIT License) and totally free
-to use, but just in case you really liked it for some reason, the author could
-use a cup of coffee or two... :)
-
-[![buy me a coffee](.github/donation-button.png)](https://www.buymeacoffee.com/yongjikkim)
 
 ## Limitations
 
