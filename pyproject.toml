@@ -1,0 +1,43 @@
+[build-system]
+requires = [
+    "hatchling>=1.27.0",
+    "pybind11",
+    # TODO: Add build dependencies here.
+]
+build-backend = "hatchling.build"
+
+[project]
+name = "croquis"
+version = "0.2.0"
+authors = [
+    { name="Yongjik Kim", email="yongjik@gmail.com" },
+]
+description = "Library for plotting interactive graphs on Jupyter Notebook"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Framework :: Jupyter",
+    "Framework :: Jupyter :: JupyterLab",
+    "Framework :: Jupyter :: JupyterLab :: Extensions",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: Implementation :: CPython",
+    # TODO: re-enable mac os!
+    # "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX :: Linux",
+]
+license = "MIT"
+dependencies = [
+    # Minimum version to support np.argsort(kind='stable').
+    'numpy>=1.15.0',
+]
+
+[project.urls]
+Homepage = "https://github.com/yongjik/croquis"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/croquis/"]
+exclude = [".gitignore", "src/croquis/lib"]
+hooks.custom.path = "build_scripts/hatch_build_hook.py"
+
+[tool.hatch.build.targets.wheel.shared-data]
+"src/croquis/labextension" = "share/jupyter/labextensions/croquis-js"

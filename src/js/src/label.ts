@@ -8,12 +8,14 @@ const LABEL_MARKER_SIZE_MAX = 8;  // px
 const LABEL_LINE_WIDTH_MAX = 5;  // px
 
 export class Label {
-    constructor(item_id, selected, label, style, cb) {
-        this.item_id = item_id;
-        this.selected = selected;
-        this.label = label;
-        this.style = style;
-
+    // See message "labels" in //src/doc/messages.txt
+    constructor(
+        public item_id: number,
+        public selected: boolean,
+        public label: string,
+        public style: string,
+        cb: ((label: Label, ev: Event) => void) | null,
+    ) {
         if (item_id == ITEM_ID_SENTINEL) {
             // This must be `null`, because its value is used as an argument to
             // search_result_area.insertBefore() inside TileHandler.
@@ -32,48 +34,46 @@ export class Label {
 
         this.elem.appendChild(document.createTextNode(this.label));
 
-        this.highlighted = false;
-
-        let cb2 = (ev) => cb(this, ev);
+        let cb2 = (ev: Event): void => cb!(this, ev);
         this.elem.addEventListener('mouseenter', cb2);
         this.elem.addEventListener('mousemove', cb2);
         this.elem.addEventListener('mouseleave', cb2);
     }
 
     // `selected` is boolean.
-    update_selected(selected) {
+    update_selected(selected: boolean): void {
         if (this.item_id == ITEM_ID_SENTINEL) return;
         this.selected = selected;
-        this.checkbox.checked = selected;
+        this.checkbox!.checked = selected;
         if (selected == false) this.update_highlight(false);
     }
 
     // `highlighted` is boolean.
-    update_highlight(highlighted) {
+    update_highlight(highlighted: boolean): void {
         if (this.item_id == ITEM_ID_SENTINEL) return;
 
         if (highlighted && !this.highlighted) {
             this.highlighted = true;
-            this.elem.classList.add('highlighted');
+            this.elem!.classList.add('highlighted');
         }
         else if (!highlighted && this.highlighted) {
             this.highlighted = false;
-            this.elem.classList.remove('highlighted');
+            this.elem!.classList.remove('highlighted');
         }
     }
 
-    clear_highlight() {
+    clear_highlight(): void {
         if (this.item_id == ITEM_ID_SENTINEL) return;
     }
 
     // Create a simple line/marker image to show in the legend.
-    create_line_svg() {
+    create_line_svg(): SVGElement {
         const [w, h] = [LABEL_SVG_WIDTH, LABEL_SVG_HEIGHT];
         const [w2, h2] = [w / 2, h / 2];
 
-        let [color, marker_size, line_width] = this.style.split(':');
-        marker_size = Math.min(marker_size, LABEL_MARKER_SIZE_MAX);
-        line_width = Math.min(line_width, LABEL_LINE_WIDTH_MAX);
+        let [color, ms, lw] = this.style.split(':');
+        let marker_size = Math.min(Number(ms), LABEL_MARKER_SIZE_MAX);
+        let line_width = Math.min(Number(lw), LABEL_LINE_WIDTH_MAX);
 
         let svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
@@ -83,18 +83,22 @@ export class Label {
         let path =
             document.createElementNS("http://www.w3.org/2000/svg", 'path');
         path.setAttribute('stroke', '#' + color);
-        path.setAttribute('stroke-width', line_width);
+        path.setAttribute('stroke-width', line_width.toString());
         path.setAttribute('d', `M 0,${h2} L ${w},${h2}`);
         svg.appendChild(path);
 
         let cir =
             document.createElementNS("http://www.w3.org/2000/svg", 'circle');
-        cir.setAttribute('cx', w2);
-        cir.setAttribute('cy', h2);
-        cir.setAttribute('r', marker_size / 2);
+        cir.setAttribute('cx', w2.toString());
+        cir.setAttribute('cy', h2.toString());
+        cir.setAttribute('r', (marker_size / 2).toString());
         cir.setAttribute('fill', '#' + color);
         svg.appendChild(cir);
 
         return svg;
     }
+
+    elem: HTMLElement | null = null;
+    checkbox: HTMLInputElement | null = null;
+    highlighted: boolean = false;
 }

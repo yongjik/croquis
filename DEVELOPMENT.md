@@ -1,101 +1,97 @@
 # Building from the source
 
-The following should work on Linux and Mac OS.  (Other OS's are not supported yet.)
+The following should work on x86 (64-bit) Linux.  (It also used to work on x86
+Mac OS, but since they're rarely used these days, I decided to not update the
+build script for them.  Some day I may add support for ARM-based Mac OS ...)
 
 ## Prerequisites
 
+
 In order to build, you need [CMake](https://cmake.org/install/),
-[webpack](https://webpack.js.org/), [terser](https://github.com/terser/terser),
-and [pybind11](https://pybind11.readthedocs.io/en/stable/index.html).  You can
-install webpack and terser by:
+[npm](https://www.npmjs.com/),
+[jupyterlab](https://jupyterlab.readthedocs.io/en/latest/),
+[hatch](https://hatch.pypa.io/latest/), and
+[pybind11](https://pybind11.readthedocs.io/en/stable/index.html).
+
+Also I recommend using [Ninja](https://ninja-build.org/), though you can use
+plain `make` instead, if you prefer.
+
+You can install the necessary python dependencies by:
 
 ```
-npm install -g webpack webpack-cli terser
-```
-
-(If don't like it, you don't *need* `-g`, but the commands `webpack` and
-`terser` must be in `$PATH` when you run the build.)
-
-You can install pybind11 by:
-
-```
-# If you're using conda:
-conda install pybind11
-
-# Otherwise:
-pip3 install pybind11
+pip install pybind11 jupyterlab hatch
 ```
 
 ## Building the wheel package
 
-```
-cd (croquis top level directory)
-# Any directory name will do, except for "build", because setup.py uses it.
-mkdir build.make
-cd build.make
-cmake -G'Unix Makefiles' -DCMAKE_BUILD_TYPE=Release ../src
-make -j8 VERBOSE=1 wheel
-```
-
-If you want to use a different compiler, add the compiler path to CMake argument
-(e.g., `-DCMAKE_CXX_COMPILER=/usr/local/bin/clang++`).
-
-If you want to use [Ninja](https://ninja-build.org/):
+The build script (`build.sh`) is a simple bash script that calls typescript,
+C++, and python build scripts in order.  (It seemed easier that way.)
 
 ```
 cd (croquis top level directory)
-mkdir build.ninja
-cd build.ninja
-cmake -GNinja -DCMAKE_BUILD_TYPE=Release ../src
-ninja -v wheel
+./build.sh
+
+# To clean everything
+./build.sh clean
+
+# To use g++ instead of clang++ (default)
+./build.sh gcc
+
+# To use make instead of ninja
+./build.sh make
+
+# To build the C++ library in debug mode
+./build.sh Debug
 ```
 
 After that, wheel file is available in the `dist` directory:
 
 ```
 cd (top level directory)/dist
-pip3 install croquis-0.1.0-cp39-cp39-linux_x86_64.whl  # Or something similar.
+pip3 install croquis-0.2.0-cp39-cp39-linux_x86_64.whl  # Or something similar.
 ```
 
-## Testing at the source tree
+## Editable install (testing at the source tree)
 
-If you want to fiddle around, you can just build the C++ shared library by
-omitting `wheel` from the build commands.  I.e.,
+For development, you can do the equivalent of `pip install -e .` by:
 
 ```
 cd (croquis top level directory)
-mkdir build.make
-cd build.make
-cmake -G'Unix Makefiles' -DCMAKE_BUILD_TYPE=Release ../src
-make -j8 VERBOSE=1
-ls ../src/croquis/lib
-# Will see something like: _csrc.cpython-39-x86_64-linux-gnu.so
+pip install editables  # needed for --no-build-isolation
+./build.sh -e --no-build-isolation
+
+# Or, if you prefer to use make instead of ninja:
+./build.sh -e --no-build-isolation make
 ```
 
-Use `-DCMAKE_BUILD_TYPE=Debug` to build in Debug mode.
+Option `--no-build-isolation` is optional, but you might prefer it, because the
+build script does not do proper build isolation anyway.  (npm and cmake build
+steps look for python libraries installed in the current python environment.)
 
-Use `make check` to run tests (there aren't many): for running tests, you also
-need to install [pytest](https://docs.pytest.org/).
-
-In addition, there are some integration tests under `src/ui_tests`: you can run
-them by `run_all_tests.py`.  To run it, you first need to install
-[playwright](https://playwright.dev/python/).
-
-Now you can simply add `src` directory to your Python import path and do:
+Currently there are only a minimal number of tests.  You can run them by:
 
 ```
-import croquis
+# C++ tests
+cd (croquis top level directory)
+cd build.ninja  # or build.make
+ninja check     # or "make check"
+
+# Python tests
+pip install pytest
+cd (croquis top level directory)
+pytest src/croquis/tests
+
+# UI integration tests
+pip install playwright
+cd (croquis top level directory)
+cd src/ui_tests
+./run_all_tests.py
+./run_all_tests.py --browser=firefox
+./run_all_tests.py --browser=webkit
 ```
 
-In this way, croquis is working in the "dev environment", which will slightly
-tweak operations to (hopefully) make life easier:
-
-* We reload js/css file every time you restart the kernel.
-* Python/C++ code will leave logging on `dbg.log` (under the current directory).
-
-In the "dev environment", croquis also runs webpack at runtime(!) to create the
-js bundle that is then loaded by the browser, which means that webpack must be
-in your `PATH`.
+With editable installs, croquis is in the "dev environment": it will log more
+stuff onto console and a file named `dbg.log` under the current directory.
 
 ## Packaging
 
@@ -108,6 +104,8 @@ However, since I had trouble figuring it out, I wrote some
 [helper scripts and notes](build_scripts/README.md), in the hopes that it may be
 useful to future myself, or any other aspiring Pythonista who's thinking of
 building and distributing their own wonderful Python package.
+
+(Warning: as of July 2025, the build doc is not up to date!)
 
 ## IDE integration
 

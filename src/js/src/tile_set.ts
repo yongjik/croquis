@@ -1,105 +1,58 @@
 // Keeps track of the tiles currently being shown in the canvas.
 
-import { tile_key } from './tile.js';
+import { Ctxt } from './ctxt';
+import { Tile, tile_key } from './tile';
+import { AnyJson, UNKNOWN, Unknown } from './types';
 import {
     assert,
+    get_child,
+    HighlightType,
     LRUCache,
     TILE_SIZE
-} from './util.js';
+} from './util';
+
+export enum CanvasResetMode {
+    RESET = "reset",    // unconditional reset
+    RESIZE = "resize",  // redraw the current canvas in new size
+}
 
 const TILE_CACHE_MAXSIZE = 500;
 
+interface ConfigReq {
+    config_id: number;
+    width: number;
+    height: number;
+}
+
 export class TileSet {
-    constructor(ctxt) {
-        this.ctxt = ctxt;
-        this.canvas_id = ctxt.canvas_id;
-        this.canvas = document.querySelector(`#${this.canvas_id} .cr_canvas`);
-        this.inner_div = this.canvas.querySelector('.cr_inner');
-        this.fg = this.canvas.querySelector('.cr_foreground');
-
-        // Canvas config values: they're not initialized yet.
-        {
-            this.config_id = -1;
-            this.width = this.height = null;
-            this.x0 = this.y0 = this.x1 = this.y1 = null;
-            this.zoom_level = 0;
-
-            // Panning offset, using screen coordinate.  E.g., if offset is (10, 3),
-            // then the tiles are shifted 10 pixels to the right and 3 pixels down.
-            this.x_offset = this.y_offset = 0;
-
-            // The last requested canvas config: x0/y0/x1/y1 are not yet
-            // available because they're computed by BE.
-            this.last_config_req = {
-                config_id: -1,
-                width: null,
-                height: null,
-            };
-        }
-
-        // Current `SelectionMap` version: always even.
-        // Incremented by 2 whenever selection changes.
-        this.sm_version = 0;
-
-        this.highlight_item_id = null;
-
-        // Currently there are two ways highlight can be triggered: by hovering
-        // over the canvas, and hovering over the search result area.  We need
-        // to distinguish the two cases, because when the search result is
-        // updated, highlight should be updated (currently just cleared) only
-        // for the latter case.
-        //
-        // When highlight is off, this value should be also `null`.
-        this.highlight_trigger = null;
-
-        // Collection of tiles currently being shown.
-        this.visible_tiles = new Map();
-
-        // LRU Cache of tiles currently *not* being shown.
-        this.tile_cache = new LRUCache(
-            TILE_CACHE_MAXSIZE,
-            (oldv, newv) => oldv.sm_version < newv.sm_version);
+    constructor(
+        private _ctxt: Ctxt,
+        private _canvas: HTMLElement
+    ) {
+        this._ctxt_id = _ctxt.ctxt_id;
+        this.inner_div = get_child(this._canvas, ".cr_inner");
+        this.fg = get_child(this._canvas, ".cr_foreground");
     }
 
-    // TODO: Too much duplicate code among reset_canvas(), resize_canvas(), and
+    // TODO: Too much duplicate code between resize_canvas() and
     //       send_zoom_req() !!
 
-    // Send the `canvas_config_req` message to reset the canvas.
-    reset_canvas() {
-        const new_config_id = this.last_config_req.config_id + 1;
-        const w = Math.round(this.canvas.clientWidth);
-        const h = Math.round(this.canvas.clientHeight);
-        console.log(`Reset canvas ${this.canvas_id} ` +
-                    `config_id=${new_config_id} w=${w} h=${h}`);
-
-        this.last_config_req = {
-            config_id: new_config_id,
-            width: w,
-            height: h,
-        };
-
-        this.ctxt.send('canvas_config_req', {
-            config_id: new_config_id,
-            w: w,
-            h: h,
-            how: 'reset'
-        });
-    }
-
     // Send the `canvas_config_req` message when the canvas was resized.
-    resize_canvas() {
-        const w = Math.round(this.canvas.clientWidth);
-        const h = Math.round(this.canvas.clientHeight);
+    resize_canvas(how: CanvasResetMode): void {
+        const is_resize = (how == CanvasResetMode.RESIZE);
+        const w = Math.round(this._canvas.clientWidth);
+        const h = Math.round(this._canvas.clientHeight);
 
-        if (w == this.last_config_req.width &&
+        if (is_resize &&
+            w == this.last_config_req.width &&
             h == this.last_config_req.height) {
-            // console.log(`Not sending resize canvas msg ${this.canvas_id} ` +
+            // console.log(`Not sending resize canvas msg ${this._ctxt_id} ` +
             //             `size already matches w=${w} h=${h}.`);
             return;
         }
 
         const new_config_id = this.last_config_req.config_id + 1;
-        console.log(`Resize canvas ${this.canvas_id} ` +
+        console.log(`Resize canvas ${this._ctxt_id} ` +
                     `config_id=${new_config_id} w=${w} h=${h}`);
 
         this.last_config_req = {
@@ -108,8 +61,8 @@ export class TileSet {
             height: h,
         };
 
-        if (this.has_valid_config()) {
-            this.ctxt.send('canvas_config_req', {
+        if (is_resize && this.has_valid_config()) {
+            this._ctxt.send('canvas_config_req', {
                 config_id: new_config_id,
                 w: w,
                 h: h,
@@ -118,8 +71,10 @@ export class TileSet {
             });
         }
         else {
-            console.log('No valid config yet, asking for reset ...');
-            this.ctxt.send('canvas_config_req', {
+            if (is_resize) {
+                console.log('No valid config yet, asking for reset ...');
+            }
+            this._ctxt.send('canvas_config_req', {
                 config_id: new_config_id,
                 w: w,
                 h: h,
@@ -129,16 +84,18 @@ export class TileSet {
     }
 
     // Send zoom request.
-    send_zoom_req(zoom) {
+    send_zoom_req(
+        zoom: { px0: number, py0: number, px1: number, py1: number}
+    ): void {
         if (!this.has_valid_config()) {
             console.log("Cannot resize: doesn't have a valid config yet!");
             return;
         }
 
         const new_config_id = this.last_config_req.config_id + 1;
-        const w = Math.round(this.canvas.clientWidth);
-        const h = Math.round(this.canvas.clientHeight);
-        console.log(`Zoom canvas ${this.canvas_id} ` +
+        const w = Math.round(this._canvas.clientWidth);
+        const h = Math.round(this._canvas.clientHeight);
+        console.log(`Zoom canvas ${this._ctxt_id} ` +
                     `config_id=${new_config_id} w=${w} h=${h}`);
 
         this.last_config_req = {
@@ -147,7 +104,7 @@ export class TileSet {
             height: h,
         };
 
-        this.ctxt.send('canvas_config_req', {
+        this._ctxt.send('canvas_config_req', {
             config_id: new_config_id,
             w: w,
             h: h,
@@ -158,13 +115,13 @@ export class TileSet {
     }
 
     // Check if we have a valid canvas config.
-    has_valid_config() {
+    has_valid_config(): boolean {
         return this.x0 != null;
     }
 
     // Convert the current shown canvas config to CanvasConfigSubMessage (see
     // messages.txt).
-    current_canvas_config() {
+    current_canvas_config(): AnyJson {
         return {
             config_id: this.config_id,
             w: this.width,
@@ -181,7 +138,7 @@ export class TileSet {
 
     // Handle the `canvas_config` message returned by BE.
     // Return true if we change the canvas config.
-    add_config(msg) {
+    add_config(msg: AnyJson): boolean {
         const config = msg.config;
         if (this.config_id >= msg.config_id) {
             console.log(`canvas_config message contains stale config ID ` +
@@ -209,17 +166,17 @@ export class TileSet {
     }
 
     // Return true if we have this tile.
-    has_tile(key) {
+    has_tile(key: string): boolean {
         return this.visible_tiles.has(key) || this.tile_cache.has(key);
     }
 
-    get_tile(key) {
+    get_tile(key: string): Tile | null {
         return this.visible_tiles.get(key) || this.tile_cache.get(key) || null;
     }
 
     // Re-compute which tiles should be visible after config was updated (e.g.,
     // after zoom).
-    refresh() {
+    refresh(): void {
         for (let tile of this.visible_tiles.values()) {
             // NOTE: This removes `tile` from `visible_tiles` if it's no longer
             // visible.
@@ -235,7 +192,7 @@ export class TileSet {
     }
 
     // Add a new tile to TileSet.
-    add_tile(tile) {
+    add_tile(tile: Tile): void {
         // If the tile is not visible, simply add to the tile cache.
         if (!this.is_visible(tile)) {
             this.tile_cache.insert(tile.key, tile);
@@ -257,7 +214,7 @@ export class TileSet {
 
     // Enable highlight layer with the given item.  If `item_id == null`,
     // turn off the highlight layer.
-    set_highlight(item_id, trigger_type) {
+    set_highlight(item_id: number | null, trigger_type: HighlightType | null): void {
         this.highlight_item_id = item_id;
         this.highlight_trigger = trigger_type;
 
@@ -294,7 +251,7 @@ export class TileSet {
 
     // Update panning: update the position of all shown tiles, and optionally
     // show cached tiles as necessary.
-    pan(new_x_offset, new_y_offset) {
+    pan(new_x_offset: number, new_y_offset: number): void {
         this.x_offset = new_x_offset;
         this.y_offset = new_y_offset;
         for (let tile of this.visible_tiles.values()) {
@@ -319,7 +276,7 @@ export class TileSet {
     // inside this.visible_tiles when called.
     //
     // TODO: This doesn't seem to be much of an optimization ... remove?
-    show_tile(tile, existing = null) {
+    show_tile(tile: Tile, existing: Tile | null = null): void {
         this.update_tile_position(tile);
         let target = tile.is_hover() ? this.fg : this.inner_div;
 
@@ -337,23 +294,23 @@ export class TileSet {
         this.visible_tiles.set(tile.key, tile);
     }
 
-    update_tile_position(tile) {
+    update_tile_position(tile: Tile): void {
         tile.elem.style.top = (tile.row * TILE_SIZE + this.y_offset) + 'px';
         tile.elem.style.left = (tile.col * TILE_SIZE + this.x_offset) + 'px';
     }
 
     // Hide a tile that is currently in the visible layer, and add it back
     // to the tile cache.
-    hide_tile(tile) {
+    hide_tile(tile: Tile): void {
         this.visible_tiles.delete(tile.key);
         tile.elem.remove();  // Remove from display.
         this.tile_cache.insert(tile.key, tile);
     }
 
     // Given screen coordinate (x, y), return the corresponding hovermap
-    // data, or `null` if the pixel is not on any item, or the literal
-    // string 'unknown' if the data is not available.
-    get_highlight_id(x, y) {
+    // data, or `null` if the pixel is not on any item, or special value UNKNOWN
+    // if the data is not available.
+    get_highlight_id(x: number, y: number): number | null | Unknown {
         x = Math.round(x - this.x_offset);
         y = Math.round(y - this.y_offset);
 
@@ -364,10 +321,11 @@ export class TileSet {
         const offset = (offset_y * TILE_SIZE) + offset_x;
 
         const key = this.tile_key(row, col);
-        if (!this.visible_tiles.has(key)) return 'unknown';
-        const hovermap = this.visible_tiles.get(key).hovermap;
+        if (!this.visible_tiles.has(key)) return UNKNOWN;
+        const hovermap = this.visible_tiles.get(key)!.hovermap;
 
-        let item_id = hovermap.getInt32(offset * 4, true /* little endian */);
+        assert(hovermap != null);
+        let item_id = hovermap!.getInt32(offset * 4, true /* little endian */);
         return (item_id == -1) ? null : item_id;
     }
 
@@ -376,7 +334,7 @@ export class TileSet {
     // TODO: Need to handle temporarily visible tiles (e.g., when we zoom
     //       in, we need to show exiting tiles in higher zoom before we get
     //       the correct tiles from BE.)
-    is_visible(tile) {
+    is_visible(tile: Tile): boolean {
         if (tile.is_hover() && tile.item_id != this.highlight_item_id)
             return false;
 
@@ -393,7 +351,7 @@ export class TileSet {
 
     // Given screen coordinate (x, y), return the corresponding tile
     // coordinate.
-    get_tile_coord(x, y) {
+    get_tile_coord(x: number, y: number): [number, number] {
         x = Math.round(x - this.x_offset);
         y = Math.round(y - this.y_offset);
 
@@ -403,7 +361,7 @@ export class TileSet {
     }
 
     // Get a list of all tile coordinates covering the canvas.
-    get_all_tile_coords() {
+    get_all_tile_coords(): [number, number][] {
         if (this.width == null || this.height == null) {
             console.log(
                 'Error: create_highlight_req called before ' +
@@ -411,7 +369,7 @@ export class TileSet {
             return [];
         }
 
-        let retval = []
+        let retval: [number, number][] = []
         const r0 = Math.floor(-this.y_offset / TILE_SIZE);
         const c0 = Math.floor(-this.x_offset / TILE_SIZE);
         const r1 = Math.ceil((this.height - this.y_offset) / TILE_SIZE) - 1;
@@ -426,12 +384,66 @@ export class TileSet {
     }
 
     // Utility function.
-    tile_key(row, col, item_id = null) {
+    tile_key(row: number, col: number, item_id: number | null = null): string {
         return tile_key(this.config_id, this.zoom_level, row, col, item_id);
     }
 
     // Increment and return a new sm_version.
-    new_sm_version() {
+    new_sm_version(): number {
         return (this.sm_version += 2);
     }
+
+    private _ctxt_id: string;
+    private inner_div: HTMLElement;
+    private fg: HTMLElement;
+
+    //--------------------------------------------
+    // Canvas config values: initialized *after* the constructor.
+
+    config_id: number = -1;
+    width: number = -1;
+    height: number = -1;
+    private x0: number | null = null;
+    private y0: number | null = null;
+    private x1: number | null = null;
+    private y1: number | null = null;
+    zoom_level: number = 0;
+
+    // Panning offset, using screen coordinate.  E.g., if offset is (10, 3),
+    // then the tiles are shifted 10 pixels to the right and 3 pixels down.
+    x_offset: number = 0;
+    y_offset: number = 0;
+
+    // The last requested canvas config: x0/y0/x1/y1 are not yet available
+    // because they're computed by BE.
+    private last_config_req: ConfigReq = {
+        config_id: -1,
+        width: 0,
+        height: 0,
+    };
+
+    //--------------------------------------------
+
+    // Current `SelectionMap` version: always even.
+    // Incremented by 2 whenever selection changes.
+    sm_version: number = 0;
+
+    highlight_item_id: number | null = null;
+
+    // Currently there are two ways highlight can be triggered: by hovering
+    // over the canvas, and hovering over the search result area.  We need
+    // to distinguish the two cases, because when the search result is
+    // updated, highlight should be updated (currently just cleared) only
+    // for the latter case.
+    //
+    // When highlight is off, this value should be also `null`.
+    highlight_trigger: HighlightType | null = null;
+
+    // Collection of tiles currently being shown.
+    visible_tiles: Map<string, Tile> = new Map();
+
+    // LRU Cache of tiles currently *not* being shown.
+    tile_cache: LRUCache<string, Tile> = new LRUCache(
+        TILE_CACHE_MAXSIZE,
+        (oldv, newv) => oldv.sm_version < newv.sm_version);
 }

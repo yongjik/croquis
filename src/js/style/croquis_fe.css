@@ -166,7 +166,7 @@
     white-space: pre-wrap;
 }
 
-.croquis_nbext .cr_progressbar {
+.croquis_nbext .cr_statusbar {
     height: 40px;
 
     /* Initially hidden: only shows up if the backend takes too long. */

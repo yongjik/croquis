@@ -5,8 +5,8 @@
 # See: https://packaging.python.org/guides/packaging-binary-extensions/
 #      https://github.com/pypa/manylinux
 #
-# How to use: build_linux.sh (python version) (package version) (git branch/tag)
-# e.g.,       build_linux.sh 3.8 0.1.0 master
+# How to use: build_linux.sh (python version) (git branch/tag)
+# e.g.,       build_linux.sh 3.8 master
 
 set -o errexit
 set -o pipefail
@@ -14,12 +14,12 @@ set -o xtrace
 
 if [[ "$INSIDE_DOCKER" != "Y" ]]; then
     root_dir=$(dirname "$0")/..
+    cache_dir=$(dirname "$0")/docker-build-cache
     py_version="$1"
-    pkg_version="$2"
-    git_tag="$3"
-    docker_container_name="crbuild-$pkg_version-$py_version"
+    git_tag="$2"
+    docker_container_name="crbuild-$py_version"
 
-    if [[ "$py_version" == "" || "$pkg_version" == "" || "$git_tag" == "" ]]; then
+    if [[ "$py_version" == "" || "$git_tag" == "" ]]; then
         set +o xtrace
         echo "How to use: build_linux.sh (python version) (package version) (git branch/tag)"
         echo "e.g.,       build_linux.sh 3.8 0.1.0 master"
@@ -28,6 +28,11 @@ if [[ "$INSIDE_DOCKER" != "Y" ]]; then
 
     rm -rf .pkg_build || true
     mkdir .pkg_build
+
+    if [[ ! -d "$cache_dir" ]]; then
+        mkdir -p "$cache_dir"
+        echo "Cache directory for build_linux.sh; safe to remove." > "$cache_dir"/README
+    fi
 
     # Create .zip file out of the whole source code.
     #
@@ -40,26 +45,21 @@ if [[ "$INSIDE_DOCKER" != "Y" ]]; then
     ) > .pkg_build/croquis_src.zip
     cp "$0" .pkg_build
 
-    # We now need node.js, which doesn't work on manylinux2010, so let's use
-    # manylinux2014.
-    #
-    # (Well, we could try running node.js *outside* of Docker, and just copy the
-    # js bundle file into Docker, but that's a lot of work, and I'm not sure if
-    # anyone actually needs it ...)
+    # Let's use manylinux_2_28: says it should support Ubuntu 18.10+, which
+    # should be good enough.
     docker rm "$docker_container_name" || true
-    docker pull quay.io/pypa/manylinux2014_x86_64
+    docker pull quay.io/pypa/manylinux_2_28_x86_64
     docker run --name "$docker_container_name" \
         --mount type=bind,src="$PWD/.pkg_build",dst=/mnt/bind \
-        quay.io/pypa/manylinux2014_x86_64:latest \
+        --mount type=bind,src="$cache_dir",dst=/root/.cache \
+        quay.io/pypa/manylinux_2_28_x86_64:latest \
         bash -c "mkdir /build ; cd /build ; unzip /mnt/bind/croquis_src.zip ;
-                 INSIDE_DOCKER=Y /mnt/bind/build_linux.sh \
-                     '$py_version' '$pkg_version'"
+                 INSIDE_DOCKER=Y /mnt/bind/build_linux.sh '$py_version'"
 
 else
     # We're inside docker now.
     py_version="$1"  # E.g., "3.8"
     py_short_version=$(echo "$py_version" | sed -e 's/\.//')  # E.g., 38
-    pkg_version="$2"
 
     # Directory names looks like: /opt/python/cp36-cp36m. /opt/python/cp310-cp310,
     # etc.
@@ -68,35 +68,39 @@ else
     pypath=$(find /opt/python -name "cp${py_short_version}-*")/bin
     export PATH="$pypath":"$PATH"
 
-    # Install necessary components.
-    pip3 install pybind11
+    # Set up shared cache directory.
+    mkdir -p /root/.cache/pip \
+             /root/.nvm \
+             /root/.cache/nvm \
+             /root/.cache/npm
+    ln -sf /root/.cache/nvm /root/.nvm/.cache
 
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
+    # Install necessary components.
+    pip3 install pybind11 jupyterlab hatch
+
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
     export NVM_DIR="$HOME/.nvm"
     set +o xtrace
     . $NVM_DIR/nvm.sh
     nvm install node
     set -o xtrace
-    npm install -g webpack webpack-cli terser
+
+    npm config set cache /root/.cache/npm
 
     # Now build!
-    mkdir -p /build/build.make
-    cd /build/build.make
-    cmake -G'Unix Makefiles' -DCMAKE_BUILD_TYPE=Release ../src
-    CR_PKG_VERSION="$pkg_version" make -j8 VERBOSE=1 wheel
-
-    # cp ../dist/croquis-$pkg_version-*.whl /mnt/bind/
+    cd /build
+    ./build.sh gcc make
 
     # Add manylinux tags to the package.
-    auditwheel repair ../dist/croquis-$pkg_version-*.whl
-    cp wheelhouse/croquis-$pkg_version-*.whl /mnt/bind/
+    auditwheel repair dist/croquis-*.whl
+    cp wheelhouse/croquis-*.whl /mnt/bind/
 
     exit 0
 fi
 
 # We're back outside.
 docker container rm "$docker_container_name"
-pkg_file=$(find .pkg_build -name "croquis-$pkg_version-*.whl")
+pkg_file=$(find .pkg_build -name "croquis-*.whl")
 cp "$pkg_file" .
 rm -rf .pkg_build
 

@@ -11,6 +11,9 @@ logger = logging.getLogger(__name__)
 # Create a unique UUID so that FE can find out when BE restarts.
 BE_uuid = str(uuid.uuid4())
 
+def get_BE_uuid():
+    return BE_uuid
+
 class CommManager(object):
     def __init__(self):
         self.is_open = False
@@ -63,7 +66,7 @@ class CommManager(object):
     # Send a message.  `attachments` is an optional list of memoryview objects
     # (or some objects that supports the buffer protocol).
     def send(self, canvas_id, msgtype, attachments=None, **kwargs):
-        kwargs.update(canvas_id=canvas_id, msg=msgtype)
+        kwargs.update(ctxt_id=canvas_id, msg=msgtype)
         if attachments is not None:
             if attachments == []:
                 attachments = None
@@ -90,7 +93,7 @@ class CommManager(object):
         logger.debug('Data received from client: %s', msg)
         try:
             data = msg['content']['data']
-            canvas_id = data['canvas_id']
+            canvas_id = data['ctxt_id']
             msgtype = data['msg']
         except KeyError:
             logger.error('Malformed message: %s', msg)
@@ -113,6 +116,11 @@ class CommManager(object):
             del self.handlers[canvas_id][msgtype]
             return
 
-        cb(canvas_id, msgtype, msg)
+        try:
+            cb(canvas_id, msgtype, msg)
+        except Exception as e:
+            logger.exception("Error in callback for canvas_id=%s, msgtype=%s",
+                             canvas_id, msgtype)
+            raise
 
 comm_manager = CommManager()

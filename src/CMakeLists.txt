@@ -92,7 +92,7 @@ get_python_config(
 
 # E.g., ".cpython-38-x86_64-linux-gnu.so"
 get_python_config(
-    "import distutils.sysconfig as s; print(s.get_config_var('SO'))"
+    "import distutils.sysconfig as s; print(s.get_config_var('EXT_SUFFIX'))"
     PYTHON_SO_SUFFIX)
 
 # message("PYTHON_INCLUDE_DIR = ${PYTHON_INCLUDE_DIR}")
@@ -151,27 +151,6 @@ add_custom_command(TARGET _csrc POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
             $<TARGET_FILE:_csrc> "${CMAKE_SOURCE_DIR}/croquis/lib/"
 )
-
-# Run webpack to create the js bundle.
-set(JS_BUNDLE_DIR "${CMAKE_BINARY_DIR}/js_bundle")
-add_custom_target(webpack
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${JS_BUNDLE_DIR}"
-    COMMAND "webpack" "-o" "${JS_BUNDLE_DIR}"
-    COMMAND "terser" "${JS_BUNDLE_DIR}/croquis_fe_dev.js"
-            "-o" "${JS_BUNDLE_DIR}/croquis_fe.js"  # Minified js file.
-            "--compress" "--mangle"
-            "--source-map" "url='croquis_fe.js.map',content='${JS_BUNDLE_DIR}/croquis_fe_dev.js.map'"
-    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/js"
-    VERBATIM
-)
-
-add_custom_target(wheel
-    COMMAND "python3" "${CMAKE_SOURCE_DIR}/../setup.py"
-            "-CMAKE" $<TARGET_FILE:_csrc> "${JS_BUNDLE_DIR}"
-            "clean" "bdist_wheel"
-)
-add_dependencies(wheel _csrc)
-add_dependencies(wheel webpack)
 
 #-------------------------------------------------
 # Tests.

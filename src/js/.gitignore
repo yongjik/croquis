@@ -1,5 +1,4 @@
-dist/
-package.json
-package-lock.json
-jsconfig.json
+.eslintcache
+tsconfig.tsbuildinfo
 node_modules/
+lib/

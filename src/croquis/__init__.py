@@ -2,14 +2,18 @@
 
 import sys
 
-# We use f-strings, so 3.6 is the minimum version.
-# TODO: Check if we can actually run on 3.6!
-assert sys.version_info[:2] >= (3, 6), 'Croquis requires Python 3.6 and higher!'
+assert sys.version_info[:2] >= (3, 9), 'Croquis requires Python 3.9 and higher!'
 
 import logging
 import os
 
 from . import env_helper, log_util
+
+def _jupyter_labextension_paths():
+    return [{
+        "src": "labextension",
+        "dest": "croquis-js",
+    }]
 
 # Check if we want to enable debug logging.
 def maybe_enable_dbglog():

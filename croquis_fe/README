@@ -1,7 +1,0 @@
-Support module for registering js/css files to Jupyter on package installation.
-Files are copied when building the package.
-
-(We may not need a separate module to do this, but I couldn't figure out a
-better way.)
-
-See setup.py for details.

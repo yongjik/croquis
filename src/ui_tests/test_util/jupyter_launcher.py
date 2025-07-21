@@ -1,6 +1,7 @@
 # Launches Jupyter notebook as subprocess for testing.
 
 import glob
+import json
 import logging
 import os
 import re
@@ -94,10 +95,11 @@ class JupyterLauncher(object):
         while True:
             line = self.jupyter_proc.stderr.readline()
             if self.cmd_args.verbose: sys.stderr.write(line)
-            m = re.search(r'http://127.0.0.1:([0-9]+)/\?token=[0-9a-f]+', line)
+            m = re.search(r'(http://127.0.0.1:([0-9]+)/)tree\?token=[0-9a-f]+', line)
             if m:
                 self.url = m.group(0)
-                self.port = m.group(1)
+                self.base_utl = m.group(1)
+                # self.port = m.group(1)
                 return
 
     # Create the notebook (.ipynb) file with the given content and return a URL
@@ -124,10 +126,30 @@ print('###' + ' PREFIX' + ' OK' + ' ###')
 
         nb = nbformat.v4.new_notebook()
         nb['cells'] = [nbformat.v4.new_code_cell(c) for c in cell_contents]
+        nb["metadata"] = json.loads("""
+            {
+                "kernelspec": {
+                    "display_name": "Python 3 (ipykernel)",
+                    "language": "python",
+                    "name": "python3"
+                },
+                "language_info": {
+                    "codemirror_mode": {
+                        "name": "ipython",
+                        "version": 3
+                    },
+                    "file_extension": ".py",
+                    "mimetype": "text/x-python",
+                    "name": "python",
+                    "nbconvert_exporter": "python",
+                    "pygments_lexer": "ipython3",
+                    "version": "%s"
+                }
+            }
+        """ % (sys.version.split()[0],))
 
         full_filename = os.path.join(test_dir, filename)
         with open(full_filename, 'w') as f:
             nbformat.write(nb, f)
 
-        url_prefix = self.url.split('?')[0]
-        return f'{url_prefix}notebooks/{filename}'
+        return f'{self.base_utl}notebooks/{filename}'

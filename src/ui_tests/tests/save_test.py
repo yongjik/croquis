@@ -58,7 +58,8 @@ def test_kernel_restart(launcher, context):
     test_helper.check_center_label(page, cell2, 'center2')
 
     test_helper.restart_kernel(page)
-    test_helper.run_jupyter_cell(page, 'PREFIX', 'pre:has-text("PREFIX OK")')
+    test_helper.run_jupyter_cell(
+        page, 'PREFIX', 'pre:has-text("PREFIX OK")', clear_first=True)
 
     # Try Cell 3 now.
     cell3, axis3 = test_helper.run_jupyter_cell(page, 'CELL3', 'div.cr_x_axis')
